@@ -1,16 +1,18 @@
-import React, { useEffect, useMemo ,useState} from 'react';
+import React, { useEffect, useMemo ,useRef, useState} from 'react';
 import { FaCar, FaUsers, FaCheck, FaTimes, FaComments, FaHistory } from 'react-icons/fa';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import { fetchMyRides, updatePassengerStatus, updateRideStatus } from '../../store/slices/rideSlice';
 import Loader from '../../components/ui/Loader';
 import { toast } from 'react-toastify';
+import { getSocket } from '../../utils/socket';
 
-const RideCard = ({ ride, onAction, onStatusChange, processingRequestId, processingRideId, processingStatusId }) => {
+const RideCard = ({ ride, onAction, onStatusChange, onToggleTracking, isTracking, processingRequestId, processingRideId, processingStatusId }) => {
     const acceptedCount = (ride.passengers || []).filter(p => p.status === 'accepted').length;
     const totalSeats = ride.seatsAvailable + acceptedCount;
     const canStart = ride.status === 'scheduled' && acceptedCount > 0;
     const canComplete = ride.status === 'active';
+    const canTrack = ride.status === 'active';
 
     return (
     <div className="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden group">
@@ -28,6 +30,19 @@ const RideCard = ({ ride, onAction, onStatusChange, processingRequestId, process
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
+                    {canTrack && (
+                        <button
+                            type="button"
+                            onClick={() => onToggleTracking(ride._id, !isTracking)}
+                            className={`px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${
+                                isTracking
+                                    ? 'bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white'
+                                    : 'bg-indigo-50 text-primary hover:bg-primary hover:text-white'
+                            }`}
+                        >
+                            {isTracking ? 'Stop Tracking' : 'Share Live Location'}
+                        </button>
+                    )}
                     {canStart && (
                         <button
                             type="button"
@@ -136,13 +151,25 @@ const RideCard = ({ ride, onAction, onStatusChange, processingRequestId, process
 const ManageRides = () => {
     const dispatch = useDispatch();
     const { myRides, loading } = useSelector((state) => state.rides);
+    const { token } = useSelector((state) => state.auth);
     const [processingRequestId, setProcessingRequestId] = useState(null);
     const [processingRideId, setProcessingRideId] = useState(null);
     const [processingStatusId, setProcessingStatusId] = useState(null);
+    const [trackingRideIds, setTrackingRideIds] = useState(new Set());
+    const watchIdsRef = useRef(new Map());
 
     useEffect(() => {
         dispatch(fetchMyRides());
     }, [dispatch]);
+
+    useEffect(() => {
+        return () => {
+            watchIdsRef.current.forEach((watchId) => {
+                navigator.geolocation?.clearWatch(watchId);
+            });
+            watchIdsRef.current.clear();
+        };
+    }, []);
 
     const activeRides = useMemo(() => {
         return (myRides || []).filter(r => ['scheduled', 'active'].includes(r.status));
@@ -176,6 +203,57 @@ const ManageRides = () => {
         }
     };
 
+    const handleToggleTracking = (rideId, shouldStart) => {
+        if (!token) {
+            toast.error('Login required to share live location.');
+            return;
+        }
+        if (!navigator.geolocation) {
+            toast.error('Geolocation is not supported on this device.');
+            return;
+        }
+
+        const socket = getSocket(token);
+        if (!socket) {
+            toast.error('Live tracking is unavailable right now.');
+            return;
+        }
+
+        if (shouldStart) {
+            if (watchIdsRef.current.has(rideId)) return;
+            const watchId = navigator.geolocation.watchPosition(
+                (pos) => {
+                    const { latitude, longitude } = pos.coords;
+                    socket.emit('ride_location_update', {
+                        rideId,
+                        lat: latitude,
+                        lng: longitude
+                    });
+                },
+                () => {
+                    toast.error('Unable to access your location.');
+                    handleToggleTracking(rideId, false);
+                },
+                { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+            );
+            watchIdsRef.current.set(rideId, watchId);
+            setTrackingRideIds((prev) => new Set(prev).add(rideId));
+            toast.success('Live location sharing enabled.');
+        } else {
+            const watchId = watchIdsRef.current.get(rideId);
+            if (watchId != null) {
+                navigator.geolocation.clearWatch(watchId);
+                watchIdsRef.current.delete(rideId);
+            }
+            setTrackingRideIds((prev) => {
+                const next = new Set(prev);
+                next.delete(rideId);
+                return next;
+            });
+            toast.info('Live location sharing stopped.');
+        }
+    };
+
     if (loading && (!myRides || myRides.length === 0)) {
         return <Loader fullPage />;
     }
@@ -197,6 +275,8 @@ const ManageRides = () => {
                             ride={ride} 
                             onAction={handleAction} 
                             onStatusChange={handleStatusChange}
+                            onToggleTracking={handleToggleTracking}
+                            isTracking={trackingRideIds.has(ride._id)}
                             processingRequestId={processingRequestId}
                             processingRideId={processingRideId}
                             processingStatusId={processingStatusId}

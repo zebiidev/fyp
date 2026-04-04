@@ -110,6 +110,30 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('join_ride_tracking', (payload) => {
+        const rideId = payload?.rideId;
+        if (rideId) {
+            socket.join(`ride:${rideId}`);
+        }
+    });
+
+    socket.on('leave_ride_tracking', (payload) => {
+        const rideId = payload?.rideId;
+        if (rideId) {
+            socket.leave(`ride:${rideId}`);
+        }
+    });
+
+    socket.on('ride_location_update', (payload) => {
+        const rideId = payload?.rideId;
+        if (!rideId) return;
+        io.to(`ride:${rideId}`).emit('ride_location_update', {
+            rideId,
+            lat: payload?.lat,
+            lng: payload?.lng
+        });
+    });
+
     socket.on('disconnect', () => {
         // Remove user from onlineUsers
         for (let [userId, socketId] of onlineUsers.entries()) {

@@ -4,6 +4,7 @@ import { FaCar, FaClock, FaMapMarkerAlt, FaChevronRight, FaComments } from 'reac
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import { fetchMyRides } from '../../store/slices/rideSlice';
+import PassengerLiveMap from '../../components/maps/PassengerLiveMap';
 
 const BookingCard = ({ booking }) => {
     const statusColors = {
@@ -87,12 +88,15 @@ const MyBookings = () => {
                 status: passengerStatus || rideStatus || 'pending',
                 price: ride.pricePerSeat,
                 chatUserId: canChat ? normalizeId(ride.driver?._id || ride.driver) : null,
-                chatUserName: ride.driver?.name || 'Rider'
+                chatUserName: ride.driver?.name || 'Rider',
+                rideStatus,
+                passengerStatus
             };
         });
     }, [currentUserId, myRides]);
 
     const activeBookings = mapped.filter((b) => ['pending', 'accepted', 'ongoing', 'active', 'scheduled'].includes((b.status || '').toLowerCase()));
+    const activeTrackingRide = activeBookings.find((b) => ['active', 'ongoing'].includes((b.status || '').toLowerCase()));
 
     const pastBookings = mapped.filter((b) => ['completed', 'cancelled', 'rejected'].includes((b.status || '').toLowerCase()));
 
@@ -105,6 +109,26 @@ const MyBookings = () => {
 
             <section>
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Active & Upcoming</h3>
+                {activeTrackingRide ? (
+                    <div className="mb-6 bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <h4 className="text-sm font-black text-slate-800">Live Ride Tracking</h4>
+                                <p className="text-xs text-slate-400 font-medium italic">
+                                    Tracking rider location for your active trip
+                                </p>
+                            </div>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">
+                                Active
+                            </span>
+                        </div>
+                        <PassengerLiveMap
+                            rideId={activeTrackingRide.id}
+                            pickupLocation={activeTrackingRide.from}
+                            dropoffLocation={activeTrackingRide.to}
+                        />
+                    </div>
+                ) : null}
                 <div className="space-y-4">
                     {activeBookings.length > 0 ? (
                         activeBookings.map((b) => <BookingCard key={b.id} booking={b} />)
