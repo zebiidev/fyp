@@ -23,10 +23,33 @@ const PassengerLiveMap = ({ rideId, pickupLocation, dropoffLocation }) => {
 
         const geocode = (address, setter) => {
             if (!address) return;
-            geocoder.geocode({ address }, (results, status) => {
+            const trimmed = address.trim();
+            const hasCountry = /pakistan/i.test(trimmed);
+            const primaryAddress = trimmed;
+            const fallbackAddress = hasCountry ? null : `${trimmed}, Pakistan`;
+            const sahiwalAddress = hasCountry ? null : `${trimmed}, Sahiwal, Punjab, Pakistan`;
+
+            geocoder.geocode({ address: primaryAddress, region: 'pk' }, (results, status) => {
                 if (status === 'OK' && results?.[0]?.geometry?.location) {
                     const loc = results[0].geometry.location;
                     setter({ lat: loc.lat(), lng: loc.lng() });
+                } else if (sahiwalAddress || fallbackAddress) {
+                    const tryFallback = (addr, onFail) => {
+                        if (!addr) return onFail();
+                        geocoder.geocode({ address: addr, region: 'pk' }, (fallbackResults, fallbackStatus) => {
+                            if (fallbackStatus === 'OK' && fallbackResults?.[0]?.geometry?.location) {
+                                const loc = fallbackResults[0].geometry.location;
+                                setter({ lat: loc.lat(), lng: loc.lng() });
+                            } else {
+                                onFail();
+                            }
+                        });
+                    };
+                    tryFallback(sahiwalAddress, () => {
+                        tryFallback(fallbackAddress, () => {
+                            setGeoError('Unable to locate pickup/drop-off on map.');
+                        });
+                    });
                 } else {
                     setGeoError('Unable to locate pickup/drop-off on map.');
                 }
@@ -46,6 +69,7 @@ const PassengerLiveMap = ({ rideId, pickupLocation, dropoffLocation }) => {
             if (payload?.rideId !== rideId) return;
             if (typeof payload?.lat === 'number' && typeof payload?.lng === 'number') {
                 setRiderPos({ lat: payload.lat, lng: payload.lng });
+                setGeoError(null);
             }
         };
 
@@ -104,7 +128,7 @@ const PassengerLiveMap = ({ rideId, pickupLocation, dropoffLocation }) => {
                     {riderPos && <Marker position={riderPos} label="R" />}
                 </GoogleMap>
             </div>
-            {geoError && (
+            {geoError && !riderPos && (
                 <p className="text-[10px] text-rose-500 font-bold uppercase tracking-widest">{geoError}</p>
             )}
             {!riderPos && (

@@ -9,7 +9,9 @@ import { toast } from 'react-toastify';
 const RideCard = ({ ride, onJoin, isJoining }) => (
     <motion.div
         whileHover={{ y: -5 }}
-        className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all group"
+        className={`bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all group ${
+            ride.isPast ? 'opacity-70' : ''
+        }`}
     >
         <div className="flex justify-between items-start mb-4">
             <div className="flex items-center gap-3">
@@ -62,6 +64,11 @@ const RideCard = ({ ride, onJoin, isJoining }) => (
                     <FaClock size={12} />
                     <span className="text-[10px] font-bold">{ride.time}</span>
                 </div>
+                {ride.isPast ? (
+                    <span className="text-[10px] font-black uppercase tracking-widest text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">
+                        Time Passed
+                    </span>
+                ) : null}
                 <div className="flex items-center gap-1.5 text-slate-500">
                     <FaUsers size={12} />
                     <span className="text-[10px] font-bold">{ride.seatsAvailable} seats left</span>
@@ -70,11 +77,13 @@ const RideCard = ({ ride, onJoin, isJoining }) => (
             <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={() => onJoin(ride.id)}
-                disabled={isJoining}
+                disabled={isJoining || ride.isPast}
                 className="bg-indigo-50 text-primary px-4 py-2 rounded-xl group-hover:bg-primary group-hover:text-white transition-all text-[10px] font-bold uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
             >
                 {isJoining ? (
                     <span>Requesting...</span>
+                ) : ride.isPast ? (
+                    <span>Time Passed</span>
                 ) : (
                     <span>Send Request</span>
                 )}
@@ -124,8 +133,23 @@ const FindRide = () => {
         return null;
     };
 
+    const getRideDateTime = (rideDate, rideTime) => {
+        if (!rideDate) return null;
+        const dateObj = new Date(rideDate);
+        if (Number.isNaN(dateObj.getTime())) return null;
+        const minutes = parseTimeToMinutes(rideTime);
+        if (minutes === null) return dateObj;
+        const hours = Math.floor(minutes / 60);
+        const mins = minutes % 60;
+        dateObj.setHours(hours, mins, 0, 0);
+        return dateObj;
+    };
+
     const mappedApiRides = useMemo(() => {
-        return (rides || []).map((ride) => ({
+        return (rides || []).map((ride) => {
+            const rideDateTime = getRideDateTime(ride.date, ride.time);
+            const isPast = rideDateTime ? rideDateTime.getTime() < Date.now() : false;
+            return ({
             id: ride._id,
             driverName: ride.driver?.name || 'Driver',
             driverImage: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(ride.driver?.name || 'Driver')}`,
@@ -137,8 +161,10 @@ const FindRide = () => {
             date: ride.date ? new Date(ride.date).toLocaleDateString() : 'Today',
             time: ride.time || 'Time TBD',
             seatsAvailable: ride.seatsAvailable,
-            driverGender: ride.driver?.gender || 'unknown'
-        }));
+            driverGender: ride.driver?.gender || 'unknown',
+            isPast
+        });
+        });
     }, [rides]);
 
     const displayedRides = useMemo(() => {
