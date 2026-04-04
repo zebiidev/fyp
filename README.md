@@ -1,16 +1,16 @@
-# RideShare FYP — Full‑Stack Campus Ride‑Sharing Platform
+# RideShare FYP - Full-Stack Campus Ride-Sharing Platform
 
-This repository contains a full‑stack ride‑sharing web application with distinct Passenger, Rider, and Admin experiences. The frontend is built with React + Vite, and the backend is a Node.js/Express API with MongoDB.
+This repository contains a full-stack ride-sharing web application with distinct Passenger, Rider, and Admin experiences. The frontend is built with React + Vite, and the backend is a Node.js/Express API with MongoDB.
 
 ## Key Features
 
 Core Experiences
-1. Role‑based dashboards for Passenger, Rider, and Admin
+1. Role-based dashboards for Passenger, Rider, and Admin
 2. Ride discovery, requests, and management
 3. Secure authentication and profile completion flows
 
 Shared Safety & Communication
-1. In‑app messaging for passenger–rider communication (real‑time via Socket.IO)
+1. In-app messaging for passenger-rider communication (real-time via Socket.IO)
 2. SOS alerts for emergency situations (Twilio messaging)
 3. Complaints workflow for issue reporting and resolution
 
@@ -50,8 +50,8 @@ Backend
 
 ## Project Structure
 
-1. `client/` — React frontend (Vite)
-2. `server/` — Express API + MongoDB
+1. `client/` - React frontend (Vite)
+2. `server/` - Express API + MongoDB
 
 ## Setup
 
@@ -66,3 +66,74 @@ Backend
 ```bash
 cd server
 npm install
+```
+
+2. Create `server/.env` with your environment variables:
+
+```env
+PORT=5000
+MONGO_URI=your_mongodb_uri
+JWT_SECRET=your_jwt_secret
+NODE_ENV=development
+
+IMAGEKIT_PUBLIC_KEY=your_key
+IMAGEKIT_PRIVATE_KEY=your_key
+IMAGEKIT_URL_ENDPOINT=your_url
+
+EMAIL_USER=your_email
+EMAIL_PASS=your_app_password
+
+TWILIO_ACCOUNT_SID=your_sid
+TWILIO_AUTH_TOKEN=your_token
+TWILIO_PHONE_NUMBER=your_phone
+TWILIO_MESSAGING_SERVICE_SID=your_service_sid
+SOS_ADMIN_PHONE=your_phone
+```
+
+3. Run the server
+
+```bash
+npm run dev
+```
+
+Frontend
+1. Install dependencies
+
+```bash
+cd client
+npm install
+```
+
+2. Create `client/.env`:
+
+```env
+VITE_API_BASE_URL=http://localhost:5000/api
+VITE_DISABLE_ROUTE_GUARDS=false
+```
+
+3. Run the client
+
+```bash
+npm run dev
+```
+
+## Scripts
+
+Client
+1. `npm run dev` - start Vite dev server
+2. `npm run build` - production build
+3. `npm run preview` - preview build
+4. `npm run lint` - lint
+
+Server
+1. `npm run dev` - start with nodemon
+2. `npm run start` - start server
+
+## Notes
+
+1. Do not commit real secrets. Rotate any credentials that may already be in your `.env` files.
+2. For production, configure environment variables securely and update CORS settings as needed.
+
+## Roadmap
+
+1. Passenger live tracking with Google Maps (in progress)

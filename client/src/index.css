@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: var(--color-indigo-600);
+  --color-primary-dark: var(--color-indigo-700);
+  --color-secondary: var(--color-sky-500);
+  --color-secondary-dark: var(--color-sky-600);
+  --color-success: var(--color-emerald-500);
+  --color-warning: var(--color-rose-600);
+  --color-surface: var(--color-slate-50);
+  
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}
+
+@layer base {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
