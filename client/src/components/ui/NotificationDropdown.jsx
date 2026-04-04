@@ -3,14 +3,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FaBell, FaCheckDouble, FaCircle, FaInfoCircle, FaCar, FaInbox } from 'react-icons/fa';
 import { useDispatch, useSelector } from 'react-redux';
 import { markRead, markAllRead } from '../../store/slices/notificationSlice';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const NotificationDropdown = () => {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
     const dispatch = useDispatch();
     const navigate = useNavigate();
+    const location = useLocation();
     const { items, unreadCount, loading } = useSelector((state) => state.notifications);
+    const { user } = useSelector((state) => state.auth);
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -35,8 +37,17 @@ const NotificationDropdown = () => {
         if (!notification.read) {
             dispatch(markRead(notification._id));
         }
-        if (notification.link) {
-            navigate(notification.link);
+        const link = notification.link;
+        const pathRole = location.pathname.split('/')[1];
+        const role = user?.role || (['passenger', 'rider', 'admin'].includes(pathRole) ? pathRole : null);
+        const shouldNavigate =
+            !!link &&
+            link !== '/' &&
+            link !== '/home' &&
+            (!role || link.startsWith(`/${role}`));
+
+        if (shouldNavigate) {
+            navigate(link);
         }
         setIsOpen(false);
     };
@@ -63,7 +74,7 @@ const NotificationDropdown = () => {
                         initial={{ opacity: 0, y: 10, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        className="absolute right-0 mt-4 w-80 md:w-96 bg-white rounded-[32px] shadow-2xl border border-slate-100 overflow-hidden z-[60]"
+                        className="absolute left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-0 mt-4 w-80 md:w-96 bg-white rounded-[32px] shadow-2xl border border-slate-100 overflow-hidden z-[60]"
                     >
                         <div className="p-6 bg-slate-50/50 border-b border-slate-100 flex items-center justify-between">
                             <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">Notifications</h3>
