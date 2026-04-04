@@ -4,7 +4,6 @@ import { FaCar, FaClock, FaMapMarkerAlt, FaChevronRight, FaComments } from 'reac
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import { fetchMyRides } from '../../store/slices/rideSlice';
-import PassengerLiveMap from '../../components/maps/PassengerLiveMap';
 
 const BookingCard = ({ booking }) => {
     const statusColors = {
@@ -110,23 +109,19 @@ const MyBookings = () => {
             <section>
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Active & Upcoming</h3>
                 {activeTrackingRide ? (
-                    <div className="mb-6 bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
-                        <div className="flex items-center justify-between mb-4">
-                            <div>
-                                <h4 className="text-sm font-black text-slate-800">Live Ride Tracking</h4>
-                                <p className="text-xs text-slate-400 font-medium italic">
-                                    Tracking rider location for your active trip
-                                </p>
-                            </div>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">
-                                Active
-                            </span>
+                    <div className="mb-6 bg-white rounded-3xl border border-slate-100 shadow-sm p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h4 className="text-sm font-black text-slate-800">Live Ride Tracking</h4>
+                            <p className="text-xs text-slate-400 font-medium italic">
+                                Track your rider in real time for this trip.
+                            </p>
                         </div>
-                        <PassengerLiveMap
-                            rideId={activeTrackingRide.id}
-                            pickupLocation={activeTrackingRide.from}
-                            dropoffLocation={activeTrackingRide.to}
-                        />
+                        <Link
+                            to={`/passenger/track/${activeTrackingRide.id}`}
+                            className="inline-flex items-center justify-center px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white transition-all"
+                        >
+                            Track Ride
+                        </Link>
                     </div>
                 ) : null}
                 <div className="space-y-4">

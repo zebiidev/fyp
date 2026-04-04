@@ -136,6 +136,7 @@ const PassengerDashboard = () => {
                 date: ride.date,
                 dateTime: rideDateTime,
                 status: effectiveStatus,
+                rideStatus,
                 price: ride.pricePerSeat,
                 passengerRating: passengerEntry?.rating,
                 driver: {
@@ -401,6 +402,14 @@ const PassengerDashboard = () => {
                                                 <span className="text-[10px] font-bold text-slate-400 uppercase">{dashboardData.currentBooking.driver.vehicleName}</span>
                                                 <span className="text-[10px] font-bold text-primary bg-indigo-50 px-2 py-0.5 rounded">{dashboardData.currentBooking.driver.plateNumber}</span>
                                             </div>
+                                            {['active', 'ongoing'].includes(toLower(dashboardData.currentBooking.rideStatus)) && (
+                                                <Link
+                                                    to={`/passenger/track/${dashboardData.currentBooking.id}`}
+                                                    className="block text-center w-full bg-emerald-50 text-emerald-700 py-2 rounded-xl text-xs font-bold hover:bg-emerald-600 hover:text-white transition-all uppercase tracking-widest"
+                                                >
+                                                    Track Ride
+                                                </Link>
+                                            )}
                                             <Link
                                                 to={`/passenger/messages?userId=${encodeURIComponent(dashboardData.currentBooking.driver.id)}&name=${encodeURIComponent(dashboardData.currentBooking.driver.name)}`}
                                                 className="block text-center w-full bg-indigo-50 text-primary py-2 rounded-xl text-xs font-bold hover:bg-primary hover:text-white transition-all"
@@ -411,6 +420,26 @@ const PassengerDashboard = () => {
                                     </div>
                                 </div>
                             </div>
+                            {['active', 'ongoing'].includes(toLower(dashboardData.currentBooking.rideStatus)) && (
+                                <div className="mt-6 bg-slate-50/70 border border-slate-100 rounded-3xl p-5">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div>
+                                            <h3 className="text-sm font-black text-slate-800">Live Tracking</h3>
+                                            <p className="text-xs text-slate-400 font-medium italic">
+                                                Track your rider in real time for this trip.
+                                            </p>
+                                        </div>
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">
+                                            Active
+                                        </span>
+                                    </div>
+                                    <PassengerLiveMap
+                                        rideId={dashboardData.currentBooking.id}
+                                        pickupLocation={dashboardData.currentBooking.pickup}
+                                        dropoffLocation={dashboardData.currentBooking.dropoff}
+                                    />
+                                </div>
+                            )}
                         ) : (
                             <div className="text-sm text-slate-500">No active booking right now. Search and book a ride to see live trip details here.</div>
                         )}

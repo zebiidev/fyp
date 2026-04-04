@@ -10,6 +10,7 @@ import PendingApproval from "./pages/PendingApproval";
 import PassengerDashboard from "./pages/passenger/Dashboard";
 import FindRide from "./pages/passenger/FindRide";
 import MyBookings from "./pages/passenger/MyBookings";
+import TrackRide from "./pages/passenger/TrackRide";
 import Messages from "./pages/passenger/Messages";
 import RideHistory from "./pages/passenger/RideHistory";
 import EmergencySOS from "./pages/passenger/EmergencySOS";
@@ -94,6 +95,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={["passenger"]}>
                   {wrapWithLayout(<MyBookings />)}
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/passenger/track/:rideId"
+              element={
+                <ProtectedRoute allowedRoles={["passenger"]}>
+                  {wrapWithLayout(<TrackRide />)}
                 </ProtectedRoute>
               }
             />
