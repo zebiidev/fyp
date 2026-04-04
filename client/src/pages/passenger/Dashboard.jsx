@@ -420,26 +420,6 @@ const PassengerDashboard = () => {
                                     </div>
                                 </div>
                             </div>
-                            {['active', 'ongoing'].includes(toLower(dashboardData.currentBooking.rideStatus)) && (
-                                <div className="mt-6 bg-slate-50/70 border border-slate-100 rounded-3xl p-5">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <div>
-                                            <h3 className="text-sm font-black text-slate-800">Live Tracking</h3>
-                                            <p className="text-xs text-slate-400 font-medium italic">
-                                                Track your rider in real time for this trip.
-                                            </p>
-                                        </div>
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">
-                                            Active
-                                        </span>
-                                    </div>
-                                    <PassengerLiveMap
-                                        rideId={dashboardData.currentBooking.id}
-                                        pickupLocation={dashboardData.currentBooking.pickup}
-                                        dropoffLocation={dashboardData.currentBooking.dropoff}
-                                    />
-                                </div>
-                            )}
                         ) : (
                             <div className="text-sm text-slate-500">No active booking right now. Search and book a ride to see live trip details here.</div>
                         )}
