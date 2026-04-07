@@ -221,24 +221,41 @@ const ManageRides = () => {
 
         if (shouldStart) {
             if (watchIdsRef.current.has(rideId)) return;
-            const watchId = navigator.geolocation.watchPosition(
-                (pos) => {
-                    const { latitude, longitude } = pos.coords;
-                    socket.emit('ride_location_update', {
-                        rideId,
-                        lat: latitude,
-                        lng: longitude
-                    });
-                },
-                () => {
-                    toast.error('Unable to access your location.');
-                    handleToggleTracking(rideId, false);
-                },
-                { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
-            );
-            watchIdsRef.current.set(rideId, watchId);
-            setTrackingRideIds((prev) => new Set(prev).add(rideId));
-            toast.success('Live location sharing enabled.');
+
+            // Helper that actually starts the geolocation watcher
+            const startWatch = () => {
+                // Avoid duplicate watchers if connect fires multiple times
+                if (watchIdsRef.current.has(rideId)) return;
+                const watchId = navigator.geolocation.watchPosition(
+                    (pos) => {
+                        const { latitude, longitude } = pos.coords;
+                        socket.emit('ride_location_update', {
+                            rideId,
+                            lat: latitude,
+                            lng: longitude
+                        });
+                    },
+                    () => {
+                        toast.error('Unable to access your location.');
+                        handleToggleTracking(rideId, false);
+                    },
+                    { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
+                );
+                watchIdsRef.current.set(rideId, watchId);
+                setTrackingRideIds((prev) => new Set(prev).add(rideId));
+                toast.success('Live location sharing enabled.');
+            };
+
+            // Wait for socket to be connected before starting geo watch
+            if (socket.connected) {
+                startWatch();
+            } else {
+                const onConnect = () => {
+                    socket.off('connect', onConnect);
+                    startWatch();
+                };
+                socket.on('connect', onConnect);
+            }
         } else {
             const watchId = watchIdsRef.current.get(rideId);
             if (watchId != null) {

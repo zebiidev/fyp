@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { GoogleMap, Marker, useLoadScript } from '@react-google-maps/api';
 import { useSelector } from 'react-redux';
 import { getSocket } from '../../utils/socket';
 
-const DEFAULT_CENTER = { lat: 33.6844, lng: 73.0479 };
+// Sahiwal, Punjab, Pakistan
+const DEFAULT_CENTER = { lat: 30.6682, lng: 73.1114 };
 
 const PassengerLiveMap = ({ rideId, pickupLocation, dropoffLocation }) => {
     const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
@@ -60,6 +61,7 @@ const PassengerLiveMap = ({ rideId, pickupLocation, dropoffLocation }) => {
         geocode(dropoffLocation, setDropoffPos);
     }, [isLoaded, pickupLocation, dropoffLocation]);
 
+    // ── Live tracking socket ──
     useEffect(() => {
         if (!token || !rideId) return;
         const socket = getSocket(token);
@@ -73,11 +75,21 @@ const PassengerLiveMap = ({ rideId, pickupLocation, dropoffLocation }) => {
             }
         };
 
-        socket.emit('join_ride_tracking', { rideId });
+        // Helper: join the tracking room (safe to call multiple times)
+        const joinRoom = () => {
+            socket.emit('join_ride_tracking', { rideId });
+        };
+
+        // If already connected, join immediately; otherwise wait for connect.
+        if (socket.connected) {
+            joinRoom();
+        }
+        socket.on('connect', joinRoom);       // handles first-time + reconnects
         socket.on('ride_location_update', handleUpdate);
 
         return () => {
             socket.emit('leave_ride_tracking', { rideId });
+            socket.off('connect', joinRoom);
             socket.off('ride_location_update', handleUpdate);
         };
     }, [rideId, token]);
@@ -98,6 +110,11 @@ const PassengerLiveMap = ({ rideId, pickupLocation, dropoffLocation }) => {
         return (
             <div className="p-6 bg-rose-50 rounded-2xl border border-rose-100 text-rose-600 text-xs font-bold uppercase tracking-widest text-center">
                 Failed to load Google Maps
+                {loadError?.message && (
+                    <div className="mt-2 text-[10px] font-semibold normal-case tracking-normal text-rose-500">
+                        {loadError.message}
+                    </div>
+                )}
             </div>
         );
     }

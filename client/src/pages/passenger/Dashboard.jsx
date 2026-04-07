@@ -35,8 +35,9 @@ const parseRideDateTime = (ride) => {
     return dateObj;
 };
 
-const getEtaLabel = (rideDateTime) => {
+const getEtaLabel = (rideDateTime, isExpired) => {
     if (!rideDateTime) return 'ETA unavailable';
+    if (isExpired) return 'Ride date has passed';
     const diffMs = rideDateTime.getTime() - Date.now();
     if (diffMs <= 0) return 'Arriving soon';
     const diffMinutes = Math.round(diffMs / (1000 * 60));
@@ -123,10 +124,18 @@ const PassengerDashboard = () => {
             });
             const passengerStatus = toLower(passengerEntry?.status);
             const rideStatus = toLower(ride.status);
+            const rideDateTime = parseRideDateTime(ride);
+            // A ride is expired if its date+time is more than 2 hours past
+            // and was never marked completed/cancelled.
+            const TWO_HOURS = 2 * 60 * 60 * 1000;
+            const isExpired = !['completed', 'cancelled'].includes(rideStatus)
+                && rideDateTime
+                && (Date.now() - rideDateTime.getTime() > TWO_HOURS);
             const effectiveStatus = ['completed', 'cancelled'].includes(rideStatus)
                 ? rideStatus
-                : (passengerStatus || rideStatus || 'pending');
-            const rideDateTime = parseRideDateTime(ride);
+                : isExpired
+                    ? 'expired'
+                    : (passengerStatus || rideStatus || 'pending');
             const driverVehicle = ride.driver?.vehicleDetails || ride.vehicle || {};
             return {
                 id: ride._id,
@@ -137,6 +146,7 @@ const PassengerDashboard = () => {
                 dateTime: rideDateTime,
                 status: effectiveStatus,
                 rideStatus,
+                isExpired: Boolean(isExpired),
                 price: ride.pricePerSeat,
                 passengerRating: passengerEntry?.rating,
                 driver: {
@@ -154,7 +164,7 @@ const PassengerDashboard = () => {
         const completedStatuses = ['completed'];
         const nowMs = Date.now();
         const upcoming = mappedRides
-            .filter((ride) => upcomingStatuses.includes(toLower(ride.status)))
+            .filter((ride) => upcomingStatuses.includes(toLower(ride.status)) && !ride.isExpired)
             .sort((a, b) => {
                 const aTime = a.dateTime?.getTime();
                 const bTime = b.dateTime?.getTime();
@@ -165,12 +175,13 @@ const PassengerDashboard = () => {
                 if (bHasTime) return 1;
                 return 0;
             });
-        const completed = mappedRides.filter((ride) => completedStatuses.includes(toLower(ride.status)));
+        const completed = mappedRides.filter((ride) => completedStatuses.includes(toLower(ride.status)) || ride.isExpired);
         const lastUnrated = completed
-            .filter((ride) => !ride.passengerRating)
+            .filter((ride) => !ride.passengerRating && !ride.isExpired)
             .sort((a, b) => (b.dateTime?.getTime() || 0) - (a.dateTime?.getTime() || 0))[0] || null;
         const futureUpcoming = upcoming.filter((ride) => Number.isFinite(ride.dateTime?.getTime()) && ride.dateTime.getTime() >= nowMs);
-        const currentBooking = (futureUpcoming[0] || upcoming[upcoming.length - 1] || null);
+        // Only show genuinely current/future rides as Current Booking
+        const currentBooking = futureUpcoming[0] || (upcoming.length > 0 ? upcoming[0] : null);
         const avgRating = completed.length > 0
             ? (completed.reduce((sum, ride) => sum + (ride.driver.rating || 0), 0) / completed.length).toFixed(1)
             : 'N/A';
@@ -340,8 +351,12 @@ const PassengerDashboard = () => {
                         <div className="flex items-center justify-between mb-8">
                             <h2 className="text-xl font-bold text-slate-800">Current Booking</h2>
                             {dashboardData.currentBooking ? (
-                                <span className="bg-indigo-50 text-primary px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider animate-pulse">
-                                    {dashboardData.currentBooking.status}
+                                <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
+                                    dashboardData.currentBooking.isExpired
+                                        ? 'bg-slate-100 text-slate-500'
+                                        : 'bg-indigo-50 text-primary animate-pulse'
+                                }`}>
+                                    {dashboardData.currentBooking.isExpired ? 'Expired' : dashboardData.currentBooking.status}
                                 </span>
                             ) : null}
                         </div>
@@ -372,10 +387,10 @@ const PassengerDashboard = () => {
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl">
-                                        <FaClock className="text-primary" />
+                                    <div className={`flex items-center gap-4 p-4 rounded-2xl ${dashboardData.currentBooking.isExpired ? 'bg-rose-50' : 'bg-slate-50'}`}>
+                                        <FaClock className={dashboardData.currentBooking.isExpired ? 'text-rose-400' : 'text-primary'} />
                                         <div>
-                                            <p className="text-xs font-bold text-slate-800">{getEtaLabel(dashboardData.currentBooking.dateTime)}</p>
+                                            <p className={`text-xs font-bold ${dashboardData.currentBooking.isExpired ? 'text-rose-600' : 'text-slate-800'}`}>{getEtaLabel(dashboardData.currentBooking.dateTime, dashboardData.currentBooking.isExpired)}</p>
                                             <p className="text-[10px] text-slate-400 uppercase font-bold">{formatDateTime(dashboardData.currentBooking.dateTime || dashboardData.currentBooking.date)}</p>
                                         </div>
                                     </div>
@@ -402,14 +417,18 @@ const PassengerDashboard = () => {
                                                 <span className="text-[10px] font-bold text-slate-400 uppercase">{dashboardData.currentBooking.driver.vehicleName}</span>
                                                 <span className="text-[10px] font-bold text-primary bg-indigo-50 px-2 py-0.5 rounded">{dashboardData.currentBooking.driver.plateNumber}</span>
                                             </div>
-                                            {['active', 'ongoing'].includes(toLower(dashboardData.currentBooking.rideStatus)) && (
+                                            {['active', 'ongoing'].includes(toLower(dashboardData.currentBooking.rideStatus)) && !dashboardData.currentBooking.isExpired ? (
                                                 <Link
                                                     to={`/passenger/track/${dashboardData.currentBooking.id}`}
                                                     className="block text-center w-full bg-emerald-50 text-emerald-700 py-2 rounded-xl text-xs font-bold hover:bg-emerald-600 hover:text-white transition-all uppercase tracking-widest"
                                                 >
                                                     Track Ride
                                                 </Link>
-                                            )}
+                                            ) : dashboardData.currentBooking.isExpired ? (
+                                                <span className="block text-center w-full bg-slate-100 text-slate-400 py-2 rounded-xl text-xs font-bold uppercase tracking-widest cursor-not-allowed">
+                                                    Tracking Unavailable
+                                                </span>
+                                            ) : null}
                                             <Link
                                                 to={`/passenger/messages?userId=${encodeURIComponent(dashboardData.currentBooking.driver.id)}&name=${encodeURIComponent(dashboardData.currentBooking.driver.name)}`}
                                                 className="block text-center w-full bg-indigo-50 text-primary py-2 rounded-xl text-xs font-bold hover:bg-primary hover:text-white transition-all"
