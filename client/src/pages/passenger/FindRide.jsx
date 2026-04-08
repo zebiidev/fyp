@@ -194,6 +194,18 @@ const FindRide = () => {
         });
     }, [mappedApiRides, filters]);
 
+    const suggestedRides = useMemo(() => {
+        return mappedApiRides
+            .filter((ride) => !ride.isPast)
+            .slice()
+            .sort((a, b) => {
+                const aTime = getRideDateTime(a.date, a.time)?.getTime() || 0;
+                const bTime = getRideDateTime(b.date, b.time)?.getTime() || 0;
+                return aTime - bTime;
+            })
+            .slice(0, 3);
+    }, [mappedApiRides]);
+
     const handleSearch = async () => {
         const fromValue = typeof from === 'string' ? from.trim() : '';
         const toValue = typeof to === 'string' ? to.trim() : '';
@@ -367,28 +379,62 @@ const FindRide = () => {
                 )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {loading ? (
-                    <div className="col-span-full">
-                        <Loader message="Searching rides..." />
-                    </div>
-                ) : displayedRides.length > 0 ? (
-                    displayedRides.map((ride) => (
+            {loading ? (
+                <div className="col-span-full">
+                    <Loader message="Searching rides..." />
+                </div>
+            ) : displayedRides.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {displayedRides.map((ride) => (
                         <RideCard 
                             key={ride.id} 
                             ride={ride} 
                             onJoin={handleJoin} 
                             isJoining={joiningRideId === ride.id}
                         />
-                    ))
-                ) : (
-                    <div className="col-span-full text-center py-16 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
-                        <FaFilter size={32} className="mx-auto text-slate-300 mb-4" />
-                        <p className="text-slate-400 text-sm font-medium">No rides available</p>
-                        <p className="text-xs text-slate-300 mt-1">Try adjusting your search filters or check back later.</p>
+                    ))}
+                </div>
+            ) : mappedApiRides.length > 0 ? (
+                <div className="space-y-6">
+                    <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5 flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-bold text-slate-700">No exact matches</p>
+                            <p className="text-xs text-slate-400">Here are some rides currently available.</p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setFilters({
+                                minPrice: '',
+                                maxPrice: '',
+                                minRating: '',
+                                seatsNeeded: '',
+                                timeFrom: '',
+                                timeTo: '',
+                                gender: 'any'
+                            })}
+                            className="text-xs font-black uppercase tracking-widest text-primary"
+                        >
+                            Clear Filters
+                        </button>
                     </div>
-                )}
-            </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        {(suggestedRides.length > 0 ? suggestedRides : mappedApiRides.slice(0, 3)).map((ride) => (
+                            <RideCard 
+                                key={ride.id} 
+                                ride={ride} 
+                                onJoin={handleJoin} 
+                                isJoining={joiningRideId === ride.id}
+                            />
+                        ))}
+                    </div>
+                </div>
+            ) : (
+                <div className="col-span-full text-center py-16 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                    <FaFilter size={32} className="mx-auto text-slate-300 mb-4" />
+                    <p className="text-slate-400 text-sm font-medium">No rides available</p>
+                    <p className="text-xs text-slate-300 mt-1">Try adjusting your search filters or check back later.</p>
+                </div>
+            )}
         </div>
     );
 };

@@ -92,6 +92,8 @@ const Settings = () => {
         .toUpperCase()
         .slice(0, 2);
 
+    const roleLabel = user?.role === 'rider' ? 'Rider' : 'Passenger';
+
     const handleChange = (e) => {
         setProfile((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     };
@@ -212,12 +214,12 @@ const Settings = () => {
                                 onChange={handleChange}
                                 className="w-full bg-slate-50 border-none rounded-xl px-4 py-2 text-xl font-black text-slate-800 focus:ring-2 focus:ring-primary"
                             />
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">{profile.regNo} • Passenger</p>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">{profile.regNo} • {roleLabel}</p>
                         </div>
                     ) : (
                         <>
                             <h2 className="text-xl font-black text-slate-800 mb-1">{profile.name || 'Unnamed'}</h2>
-                            <p className="text-sm text-slate-400 font-bold mb-4">{profile.regNo || 'No Reg #'} • Passenger</p>
+                            <p className="text-sm text-slate-400 font-bold mb-4">{profile.regNo || 'No Reg #'} • {roleLabel}</p>
                         </>
                     )}
                 </div>
@@ -334,3 +336,4 @@ const Settings = () => {
 };
 
 export default Settings;
+

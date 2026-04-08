@@ -76,6 +76,19 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    isBlocked: {
+        type: Boolean,
+        default: false
+    },
+    blockedReason: {
+        type: String,
+        trim: true,
+        default: ''
+    },
+    blockedAt: {
+        type: Date,
+        default: null
+    },
     // For Riders
     vehicleDetails: {
         type: {

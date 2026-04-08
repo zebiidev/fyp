@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaUsers, FaSearch, FaTrash, FaEye, FaFilter, FaChevronDown } from 'react-icons/fa';
+import { FaUsers, FaSearch, FaTrash, FaEye, FaFilter, FaChevronDown, FaBan, FaUnlock } from 'react-icons/fa';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import Loader from '../../components/ui/Loader';
@@ -15,6 +15,7 @@ const UserDirectory = () => {
     const [roleFilter, setRoleFilter] = useState('all');
     const [deletingId, setDeletingId] = useState(null);
     const [selectedUser, setSelectedUser] = useState(null);
+    const [blockingId, setBlockingId] = useState(null);
 
     useEffect(() => {
         fetchUsers(1, true);
@@ -75,6 +76,62 @@ const UserDirectory = () => {
         }
     };
 
+    const confirmBlock = (user) => {
+        const toastId = toast(
+            ({ closeToast }) => (
+                <div className="space-y-3">
+                    <p className="text-sm font-bold text-slate-800">Block this user?</p>
+                    <p className="text-xs text-slate-500">
+                        {user.name} will be unable to access the app until unblocked.
+                    </p>
+                    <div className="flex gap-2 justify-end">
+                        <button
+                            type="button"
+                            onClick={() => toast.dismiss(toastId)}
+                            className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-500"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                toast.dismiss(toastId);
+                                handleBlockToggle(user);
+                            }}
+                            className="px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest bg-rose-500 text-white"
+                        >
+                            Yes, Block
+                        </button>
+                    </div>
+                </div>
+            ),
+            {
+                autoClose: false,
+                closeOnClick: false,
+                draggable: false
+            }
+        );
+    };
+
+    const handleBlockToggle = async (user) => {
+        const shouldBlock = !user.isBlocked;
+        const reason = shouldBlock ? 'Blocked by admin' : '';
+
+        setBlockingId(user._id);
+        try {
+            const res = await api.patch(`/admin/users/${user._id}/block`, { blocked: shouldBlock, reason });
+            toast.success(res.data?.message || (shouldBlock ? 'User blocked' : 'User unblocked'));
+            setUsers((prev) => prev.map((u) => (u._id === user._id ? res.data.user : u)));
+            if (selectedUser && selectedUser._id === user._id) {
+                setSelectedUser(res.data.user);
+            }
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to update user status');
+        } finally {
+            setBlockingId(null);
+        }
+    };
+
     return (
         <div className="space-y-8 pb-10">
             <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -132,7 +189,7 @@ const UserDirectory = () => {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <h3 className="text-lg font-black text-slate-800 truncate">{user.name}</h3>
-                                            <div className="flex items-center gap-2 mt-1">
+                                            <div className="flex flex-wrap items-center gap-2 mt-1">
                                                 <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg
                                                     ${user.role === 'rider' ? 'bg-indigo-50 text-primary' : 'bg-emerald-50 text-emerald-600'}`}>
                                                     {user.role}
@@ -141,6 +198,11 @@ const UserDirectory = () => {
                                                     ${user.accountStatus === 'approved' ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-orange-600'}`}>
                                                     {user.accountStatus}
                                                 </span>
+                                                {user.isBlocked && (
+                                                    <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg bg-rose-50 text-rose-600">
+                                                        blocked
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -166,6 +228,17 @@ const UserDirectory = () => {
                                             className="flex-1 py-3 bg-slate-50 text-slate-400 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-100 hover:text-slate-600 transition-all flex items-center justify-center gap-2"
                                         >
                                             <FaEye /> Details
+                                        </button>
+                                        <button 
+                                            onClick={() => (user.isBlocked ? handleBlockToggle(user) : confirmBlock(user))}
+                                            disabled={blockingId === user._id}
+                                            className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 disabled:opacity-50 ${
+                                                user.isBlocked
+                                                    ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white'
+                                                    : 'bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white'
+                                            }`}
+                                        >
+                                            {user.isBlocked ? <FaUnlock /> : <FaBan />} {blockingId === user._id ? '...' : (user.isBlocked ? 'Unblock' : 'Block')}
                                         </button>
                                         <button 
                                             onClick={() => handleDelete(user._id)}
@@ -241,6 +314,11 @@ const UserDirectory = () => {
                                                     ${selectedUser.accountStatus === 'approved' ? 'bg-emerald-200 text-emerald-800' : 'bg-orange-200 text-orange-800'}`}>
                                                     {selectedUser.accountStatus}
                                                 </span>
+                                                {selectedUser.isBlocked && (
+                                                    <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-200 text-rose-800">
+                                                        Blocked
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -280,21 +358,32 @@ const UserDirectory = () => {
                                     </div>
                                 </div>
 
-                                <div className="pt-6 border-t border-slate-100 flex gap-4">
-                                    <button 
-                                        onClick={() => {
-                                            handleDelete(selectedUser._id);
-                                            setSelectedUser(null);
-                                        }}
-                                        className="px-6 py-4 bg-rose-50 text-rose-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all flex items-center justify-center gap-2"
-                                    >
-                                        <FaTrash /> Delete Account
-                                    </button>
-                                    <button 
-                                        onClick={() => setSelectedUser(null)}
-                                        className="flex-1 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:shadow-xl transition-all"
-                                    >
-                                        Close Details
+                                    <div className="pt-6 border-t border-slate-100 flex gap-4">
+                                        <button 
+                                            onClick={() => {
+                                                handleDelete(selectedUser._id);
+                                                setSelectedUser(null);
+                                            }}
+                                            className="px-6 py-4 bg-rose-50 text-rose-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <FaTrash /> Delete Account
+                                        </button>
+                                        <button 
+                                            onClick={() => (selectedUser.isBlocked ? handleBlockToggle(selectedUser) : confirmBlock(selectedUser))}
+                                            disabled={blockingId === selectedUser._id}
+                                            className={`px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 disabled:opacity-50 ${
+                                                selectedUser.isBlocked
+                                                    ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white'
+                                                    : 'bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white'
+                                            }`}
+                                        >
+                                            {selectedUser.isBlocked ? <FaUnlock /> : <FaBan />} {blockingId === selectedUser._id ? '...' : (selectedUser.isBlocked ? 'Unblock' : 'Block')}
+                                        </button>
+                                        <button 
+                                            onClick={() => setSelectedUser(null)}
+                                            className="flex-1 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:shadow-xl transition-all"
+                                        >
+                                            Close Details
                                     </button>
                                 </div>
                             </div>

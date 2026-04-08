@@ -18,6 +18,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import Message from './models/Message.js';
+import User from './models/User.js';
 
 const app = express();
 const httpServer = createServer(app);
@@ -30,12 +31,15 @@ const io = new Server(httpServer, {
     }
 });
 
-io.use((socket, next) => {
+io.use(async (socket, next) => {
     try {
         const token = socket.handshake.auth?.token;
         if (!token) return next(new Error('Unauthorized'));
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const user = await User.findById(decoded.id).select('role isBlocked');
+        if (!user) return next(new Error('Unauthorized'));
+        if (user.role !== 'admin' && user.isBlocked) return next(new Error('Blocked'));
         socket.userId = decoded.id.toString();
         next();
     } catch (error) {

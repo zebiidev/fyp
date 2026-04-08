@@ -199,12 +199,12 @@ const RiderDashboard = () => {
                                     animate={{ opacity: 1, x: 0 }}
                                     className="bg-white p-5 rounded-[28px] border border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-6 hover:shadow-md transition-all group"
                                 >
-                                    <div className="flex items-center gap-4 w-full sm:w-auto">
+                                    <div className="flex items-center gap-4 w-full sm:w-auto min-w-0">
                                         <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 font-bold text-lg border-2 border-slate-100">
                                             {req.avatar}
                                         </div>
-                                        <div>
-                                            <h4 className="font-black text-slate-800">{req.user}</h4>
+                                        <div className="min-w-0">
+                                            <h4 className="font-black text-slate-800 truncate">{req.user}</h4>
                                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none mt-1">
                                                 {req.time} • {req.seats} Seat requested
                                             </p>
@@ -212,9 +212,9 @@ const RiderDashboard = () => {
                                     </div>
 
                                     <div className="flex items-center gap-4 w-full sm:w-auto border-t sm:border-t-0 sm:border-l border-slate-50 pt-4 sm:pt-0 sm:pl-6">
-                                        <div className="flex-1 sm:flex-none">
+                                        <div className="flex-1 sm:flex-none min-w-0">
                                             <p className="text-[9px] text-slate-300 font-black uppercase mb-1">Route</p>
-                                            <p className="text-xs font-bold text-slate-600">{req.from} → {req.to}</p>
+                                            <p className="text-xs font-bold text-slate-600 break-words">{req.from} → {req.to}</p>
                                         </div>
                                         <div className="flex gap-2">
                                             <button 
@@ -246,18 +246,18 @@ const RiderDashboard = () => {
                     <h2 className="text-xl font-black text-slate-800 tracking-tight">Active Offer</h2>
                     {activeOffer ? (
                         <div className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm relative overflow-hidden">
-                            <div className="flex items-center justify-between mb-8">
-                                <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl">
-                                    <FaCar size={24} />
+                                <div className="flex items-center justify-between mb-8">
+                                    <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl">
+                                        <FaCar size={24} />
+                                    </div>
+                                    <span className="bg-emerald-500 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-100 uppercase whitespace-nowrap">
+                                        {activeOffer.status}
+                                    </span>
                                 </div>
-                                <span className="bg-emerald-500 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-100 uppercase">
-                                    {activeOffer.status}
-                                </span>
-                            </div>
                             
                             <div className="space-y-4 mb-8">
                                 <div>
-                                    <h3 className="text-lg font-black text-slate-800">
+                                    <h3 className="text-lg font-black text-slate-800 break-words">
                                         {activeOffer.vehicle?.model || 'Vehicle'} ({activeOffer.vehicle?.plateNumber || 'N/A'})
                                     </h3>
                                     <p className="text-sm font-bold text-slate-400 italic">Leaves at {activeOffer.time}</p>

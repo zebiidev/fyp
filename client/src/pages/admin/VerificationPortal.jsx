@@ -13,37 +13,6 @@ const VerificationPortal = () => {
     const [apiApplications, setApiApplications] = useState([]);
     const [actionLoading, setActionLoading] = useState({ id: null, type: null }); // { id, type: 'approved' | 'rejected' }
 
-    const fallbackApplications = [
-        { 
-            id: 101, 
-            name: 'Ali Khan', 
-            dept: 'EE', 
-            vehicleType: 'Car', 
-            model: 'Honda Civic 2022', 
-            reg: 'LEA-1234',
-            docs: {
-                vehicle: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=800&q=80',
-                plate: 'https://images.unsplash.com/photo-1598501479155-906516629ca5?auto=format&fit=crop&w=800&q=80',
-                license: 'https://images.unsplash.com/photo-1582218771059-7d1ad0766ee2?auto=format&fit=crop&w=800&q=80'
-            },
-            time: '15 mins ago'
-        },
-        { 
-            id: 102, 
-            name: 'Usman Pirzada', 
-            dept: 'CS', 
-            vehicleType: 'Motorbike', 
-            model: 'Honda CB 150F', 
-            reg: 'MNP-992',
-            docs: {
-                vehicle: 'https://images.unsplash.com/photo-1558981403-c5f91cbba527?auto=format&fit=crop&w=800&q=80',
-                plate: 'https://images.unsplash.com/photo-1594818379496-da1e345b0cd3?auto=format&fit=crop&w=800&q=80',
-                license: 'https://images.unsplash.com/photo-1582218771059-7d1ad0766ee2?auto=format&fit=crop&w=800&q=80'
-            },
-            time: '2 hours ago'
-        }
-    ];
-
     const fetchPending = async () => {
         try {
             const res = await api.get('/admin/riders/pending-verifications');
@@ -55,9 +24,9 @@ const VerificationPortal = () => {
                 model: `${user.vehicleDetails?.model || ''}`.trim() || 'Not submitted',
                 reg: user.vehicleDetails?.plateNumber || 'Not submitted',
                 docs: {
-                    vehicle: user.vehicleDetails?.images?.[0] || 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=800&q=80',
-                    plate: user.vehicleDetails?.images?.[1] || 'https://images.unsplash.com/photo-1598501479155-906516629ca5?auto=format&fit=crop&w=800&q=80',
-                    license: user.verificationDocuments?.[0]?.url || 'https://images.unsplash.com/photo-1582218771059-7d1ad0766ee2?auto=format&fit=crop&w=800&q=80'
+                    vehicle: user.vehicleDetails?.images?.[0] || '',
+                    plate: user.vehicleDetails?.images?.[1] || '',
+                    license: user.verificationDocuments?.[0]?.url || ''
                 },
                 time: user.createdAt ? new Date(user.createdAt).toLocaleString() : 'Pending'
             }));
@@ -100,37 +69,43 @@ const VerificationPortal = () => {
                 {/* Applications List */}
                 <div className="lg:col-span-1 space-y-4 min-w-0">
                     <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Verification Queue</h3>
-                    {applications.map((app) => (
-                        <motion.div 
-                            key={app.id}
-                            whileHover={{ x: 5 }}
-                            onClick={() => {
-                                setSelectedApp(app);
-                                setMainPreview(app.docs.vehicle);
-                            }}
-                            className={`p-6 rounded-[32px] border cursor-pointer transition-all overflow-hidden relative
-                                ${selectedApp?.id === app.id 
-                                    ? 'bg-slate-900 border-slate-900 text-white shadow-xl shadow-slate-200' 
-                                    : 'bg-white border-slate-100 hover:border-slate-300'}`}
-                        >
-                            <div className="flex justify-between items-start mb-4">
-                                <div className={`p-3 rounded-2xl ${selectedApp?.id === app.id ? 'bg-slate-800' : 'bg-slate-50 text-slate-400'}`}>
-                                    {app.vehicleType === 'Car' ? <FaCar /> : <FaCar />}
-                                </div>
-                                <span className="text-[9px] font-black uppercase opacity-60">{app.time}</span>
-                            </div>
-                            <h4 className="font-black text-lg">{app.name}</h4>
-                            <p className={`text-xs font-bold ${selectedApp?.id === app.id ? 'text-slate-400' : 'text-slate-500'}`}>
-                                {app.model} • {app.reg}
-                            </p>
-                            {selectedApp?.id === app.id && (
-                                <motion.div 
-                                    layoutId="active-indicator"
-                                    className="absolute right-[-10px] top-1/2 -translate-y-1/2 w-5 h-20 bg-emerald-500 rounded-full"
-                                />
-                            )}
-                        </motion.div>
-                    ))}
+                    {applications.length > 0 ? (
+    applications.map((app) => (
+        <motion.div 
+            key={app.id}
+            whileHover={{ x: 5 }}
+            onClick={() => {
+                setSelectedApp(app);
+                setMainPreview(app.docs.vehicle);
+            }}
+            className={`p-6 rounded-[32px] border cursor-pointer transition-all overflow-hidden relative
+                ${selectedApp?.id === app.id 
+                    ? 'bg-slate-900 border-slate-900 text-white shadow-xl shadow-slate-200' 
+                    : 'bg-white border-slate-100 hover:border-slate-300'}`}
+        >
+            <div className="flex justify-between items-start mb-4">
+                <div className={`p-3 rounded-2xl ${selectedApp?.id === app.id ? 'bg-slate-800' : 'bg-slate-50 text-slate-400'}`}>
+                    {app.vehicleType === 'Car' ? <FaCar /> : <FaCar />}
+                </div>
+                <span className="text-[9px] font-black uppercase opacity-60">{app.time}</span>
+            </div>
+            <h4 className="font-black text-lg">{app.name}</h4>
+            <p className={`text-xs font-bold ${selectedApp?.id === app.id ? 'text-slate-400' : 'text-slate-500'}`}>
+                {app.model} • {app.reg}
+            </p>
+            {selectedApp?.id === app.id && (
+                <motion.div 
+                    layoutId="active-indicator"
+                    className="absolute right-[-10px] top-1/2 -translate-y-1/2 w-5 h-20 bg-emerald-500 rounded-full"
+                />
+            )}
+        </motion.div>
+    ))
+) : (
+    <div className="text-center py-10 bg-slate-50 rounded-[28px] border border-dashed border-slate-200">
+        <p className="text-sm text-slate-400 font-medium italic">No pending applications.</p>
+    </div>
+)}
                 </div>
 
                 {/* Review Detail Panel */}
@@ -149,7 +124,7 @@ const VerificationPortal = () => {
                                     <div className="flex-1 min-w-0">
                                         <h2 className="text-2xl font-black text-slate-800 truncate">{selectedApp.name}</h2>
                                         <p className="text-sm font-bold text-slate-400 break-all">
-                                            Application #{selectedApp.id}01 • <span className="inline-block">{selectedApp.dept} Department</span>
+                                            Application #{selectedApp.id} • <span className="inline-block">{selectedApp.dept} Department</span>
                                         </p>
                                     </div>
                                 </div>
@@ -204,15 +179,23 @@ const VerificationPortal = () => {
                                         {Object.entries(selectedApp.docs).map(([key, src]) => (
                                             <div
                                                 key={key}
-                                                onClick={() => setMainPreview(src)}
-                                                className={`relative group rounded-xl overflow-hidden shadow-sm border cursor-pointer aspect-square ${
-                                                    mainPreview === src ? 'border-emerald-400 ring-2 ring-emerald-200' : 'border-slate-100'
-                                                }`}
+                                                onClick={() => src && setMainPreview(src)}
+                                                className={`relative group rounded-xl overflow-hidden shadow-sm border aspect-square ${
+                                                    src ? 'cursor-pointer' : 'bg-slate-50'
+                                                } ${mainPreview === src && src ? 'border-emerald-400 ring-2 ring-emerald-200' : 'border-slate-100'}`}
                                             >
-                                                <img src={src} alt={key} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
-                                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <FaEye className="text-white" />
-                                                </div>
+                                                {src ? (
+                                                    <>
+                                                        <img src={src} alt={key} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <FaEye className="text-white" />
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-[9px] font-black uppercase tracking-widest text-slate-300">
+                                                        No Image
+                                                    </div>
+                                                )}
                                             </div>
                                         ))}
                                     </div>
@@ -224,7 +207,13 @@ const VerificationPortal = () => {
                             <div className="space-y-4">
                                 <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 pb-4">Main Vehicle Image</h3>
                                 <div className="w-full h-80 rounded-[32px] overflow-hidden shadow-inner bg-slate-50 border-4 border-white translate-z-0">
-                                    <img src={mainPreview || selectedApp.docs.vehicle} alt="Vehicle Detail" className="w-full h-full object-cover" />
+                                    {mainPreview || selectedApp.docs.vehicle ? (
+                                        <img src={mainPreview || selectedApp.docs.vehicle} alt="Vehicle Detail" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-xs font-black uppercase tracking-widest text-slate-300">
+                                            No Preview Available
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -247,3 +236,4 @@ const VerificationPortal = () => {
 };
 
 export default VerificationPortal;
+

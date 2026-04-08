@@ -32,6 +32,7 @@ import SystemAnalytics from "./pages/admin/SystemAnalytics";
 import AdminSettings from "./pages/admin/Settings";
 import AdminComplaints from "./pages/admin/Complaints";
 import AdminManagement from "./pages/admin/AdminManagement";
+import RegistrationDirectory from "./pages/admin/RegistrationDirectory";
 import DashboardLayout from "./components/layout/DashboardLayout";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import RootRedirect from "./components/auth/RootRedirect";
@@ -317,6 +318,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={["admin"]}>
                   {wrapWithLayout(<AdminManagement />)}
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/registrations"
+              element={
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  {wrapWithLayout(<RegistrationDirectory />)}
                 </ProtectedRoute>
               }
             />

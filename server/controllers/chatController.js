@@ -43,7 +43,7 @@ export const getConversations = async (req, res) => {
         });
 
         // Get user details
-        const users = await User.find({ _id: { $in: Array.from(userIds) } }).select('name email role');
+        const users = await User.find({ _id: { $in: Array.from(userIds) } }).select('name email role avatar');
 
         // Map users to conversation format (add last message info if needed)
         const conversations = users.map(user => {
@@ -63,6 +63,22 @@ export const getConversations = async (req, res) => {
         });
 
         res.json(conversations);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+};
+
+// @desc    Get primary admin contact
+// @route   GET /api/chat/admin
+// @access  Private
+export const getAdminContact = async (req, res) => {
+    try {
+        const adminUser = await User.findOne({ role: 'admin' }).select('name email role avatar');
+        if (!adminUser) {
+            return res.status(404).json({ message: 'Admin user not found' });
+        }
+        res.json({ user: adminUser });
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server Error');

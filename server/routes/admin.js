@@ -1,5 +1,6 @@
 import express from 'express';
-import { getDashboardStats, getSystemAnalytics, getPendingUsers, updateUserStatus, getAllUsers, deleteUser, getPendingRiderVerifications, verifyRider } from '../controllers/adminController.js';
+import { getDashboardStats, getSystemAnalytics, getPendingUsers, updateUserStatus, getAllUsers, deleteUser, getPendingRiderVerifications, verifyRider, updateUserBlockStatus } from '../controllers/adminController.js';
+import { addRegistrationNumbers, listRegistrationNumbers, updateRegistrationStatus } from '../controllers/registrationController.js';
 import { 
     getAdminSettings,
     updateAdminSettings,
@@ -16,6 +17,9 @@ const router = express.Router();
 
 router.get('/stats', protect, admin, getDashboardStats);
 router.get('/analytics', protect, admin, getSystemAnalytics);
+router.get('/registrations', protect, admin, listRegistrationNumbers);
+router.post('/registrations', protect, admin, addRegistrationNumbers);
+router.patch('/registrations/:id', protect, admin, updateRegistrationStatus);
 router.get('/riders/pending-verifications', protect, admin, getPendingRiderVerifications);
 router.put('/riders/:id/verify', protect, admin, verifyRider);
 router.get('/settings', protect, admin, getAdminSettings);
@@ -31,6 +35,7 @@ router.put('/admins/:id/promote', protect, admin, promoteToAdmin);
 router.get('/users/pending', protect, admin, getPendingUsers);
 router.get('/users', protect, admin, getAllUsers);
 router.put('/users/:id/status', protect, admin, updateUserStatus);
+router.patch('/users/:id/block', protect, admin, updateUserBlockStatus);
 router.delete('/users/:id', protect, admin, deleteUser);
 
 export default router;

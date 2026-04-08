@@ -16,20 +16,20 @@ const RideCard = ({ ride, onAction, onStatusChange, onToggleTracking, isTracking
 
     return (
     <div className="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden group">
-        <div className="p-8 border-b border-slate-50">
-            <div className="flex justify-between items-start mb-6">
-                <div className="flex items-center gap-3">
+        <div className="p-7 sm:p-8 border-b border-slate-50">
+            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5 mb-6">
+                <div className="flex items-center gap-3 min-w-0">
                     <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 border border-slate-100">
                         <FaCar size={20} />
                     </div>
-                    <div>
-                        <h3 className="font-black text-slate-800">
+                    <div className="min-w-0">
+                        <h3 className="font-black text-slate-800 truncate">
                             {ride.vehicle?.model || 'Vehicle'} ({ride.vehicle?.plateNumber || 'N/A'})
                         </h3>
                         <p className="text-xs font-bold text-slate-400 italic">Leaves at {ride.time}</p>
                     </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                     {canTrack && (
                         <button
                             type="button"
@@ -63,7 +63,7 @@ const RideCard = ({ ride, onAction, onStatusChange, onToggleTracking, isTracking
                             {processingStatusId === ride._id ? 'Completing...' : 'Complete Ride'}
                         </button>
                     )}
-                    <span className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg ${
+                    <span className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg whitespace-nowrap ${
                         ride.status === 'completed' ? 'bg-slate-100 text-slate-500' : 
                         ride.status === 'active' ? 'bg-indigo-500 text-white' : 'bg-emerald-500 text-white shadow-emerald-100'
                     }`}>
@@ -72,12 +72,14 @@ const RideCard = ({ ride, onAction, onStatusChange, onToggleTracking, isTracking
                 </div>
             </div>
 
-            <div className="flex items-center gap-8 mb-8">
-                <div className="flex-1">
+            <div className="flex flex-col lg:flex-row lg:items-center gap-5 mb-2">
+                <div className="flex-1 min-w-0">
                     <p className="text-[9px] text-slate-300 font-black uppercase mb-1">Route</p>
-                    <p className="text-sm font-bold text-slate-700">{ride.pickupLocation} → {ride.dropoffLocation}</p>
+                    <p className="text-sm font-bold text-slate-700 break-words">
+                        {ride.pickupLocation} → {ride.dropoffLocation}
+                    </p>
                 </div>
-                <div className="flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-xl">
+                <div className="flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-xl w-fit">
                     <FaUsers className="text-primary" />
                     <span className="text-xs font-black text-slate-600">
                         {acceptedCount} / {totalSeats} Filled
@@ -86,26 +88,26 @@ const RideCard = ({ ride, onAction, onStatusChange, onToggleTracking, isTracking
             </div>
         </div>
 
-        <div className="p-8 bg-slate-50/50">
+        <div className="p-7 sm:p-8 bg-slate-50/50">
             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 px-1">
                 Passenger Requests ({(ride.passengers || []).length})
             </h4>
             <div className="space-y-4">
                 {(ride.passengers || []).length > 0 ? (
                     (ride.passengers || []).map((req) => (
-                        <div key={req._id} className="bg-white p-4 rounded-3xl flex items-center justify-between border border-white group-hover:border-slate-100 transition-all">
-                            <div className="flex items-center gap-4">
+                        <div key={req._id} className="bg-white p-4 rounded-3xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border border-white group-hover:border-slate-100 transition-all">
+                            <div className="flex items-center gap-4 min-w-0">
                                 <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-primary font-bold text-xs">
                                     {(req.user?.name || 'P').charAt(0).toUpperCase()}
                                 </div>
-                                <div>
-                                    <p className="text-sm font-black text-slate-700 leading-none">{req.user?.name || 'Passenger'}</p>
+                                <div className="min-w-0">
+                                    <p className="text-sm font-black text-slate-700 leading-none truncate">{req.user?.name || 'Passenger'}</p>
                                     <p className="text-[10px] text-slate-400 font-bold mt-1 italic">
                                         {req.status} • {req.seatsBooked} seat
                                     </p>
                                 </div>
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex flex-wrap gap-2">
                                 {req.status === 'accepted' ? (
                                     <Link
                                         to={`/rider/messages?userId=${req.user?._id}&name=${encodeURIComponent(req.user?.name)}`}
@@ -315,3 +317,4 @@ const ManageRides = () => {
 };
 
 export default ManageRides;
+

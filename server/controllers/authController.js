@@ -14,6 +14,7 @@ const generateToken = (id) => {
 // @access  Public
 export const register = async (req, res) => {
     const { name, email, password, role, registrationNumber } = req.body;
+    const normalizedReg = registrationNumber ? registrationNumber.toString().trim().toUpperCase() : '';
 
     try {
         let user = await User.findOne({ email });
@@ -23,9 +24,11 @@ export const register = async (req, res) => {
         }
 
         // Check if registration number is already used
-        const regExists = await User.findOne({ registrationNumber });
-        if (regExists) {
-            return res.status(400).json({ message: 'Registration number already registered' });
+        if (normalizedReg) {
+            const regExists = await User.findOne({ registrationNumber: normalizedReg });
+            if (regExists) {
+                return res.status(400).json({ message: 'Registration number already registered' });
+            }
         }
 
         // Manual Hashing before creation
@@ -37,7 +40,7 @@ export const register = async (req, res) => {
             email,
             password: hashedPassword,
             role,
-            registrationNumber,
+            registrationNumber: normalizedReg,
             accountStatus: 'pending' // Default to pending
         });
 
@@ -88,6 +91,11 @@ export const login = async (req, res) => {
         if (user.role !== 'admin' && user.accountStatus !== 'approved') {
             return res.status(403).json({
                 message: `Your account is currently ${user.accountStatus}. Please wait for admin approval.`
+            });
+        }
+        if (user.role !== 'admin' && user.isBlocked) {
+            return res.status(403).json({
+                message: 'Your account has been blocked. Please contact support.'
             });
         }
 

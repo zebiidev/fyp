@@ -2,6 +2,7 @@ import User from '../models/User.js';
 import Ride from '../models/Ride.js';
 import Complaint from '../models/Complaint.js';
 import AdminSettings from '../models/AdminSettings.js';
+import RegistrationNumber from '../models/RegistrationNumber.js';
 import { sendApprovalEmail, sendRejectionEmail } from '../utils/emailService.js';
 import { createNotification } from './notificationController.js';
 
@@ -165,6 +166,24 @@ export const updateUserStatus = async (req, res) => {
 
         user.accountStatus = status;
         if (status === 'approved') {
+            if (user.registrationNumber) {
+                const regNumber = user.registrationNumber.toString().trim().toUpperCase();
+                const registryEntry = await RegistrationNumber.findOne({ number: regNumber });
+                if (!registryEntry) {
+                    return res.status(400).json({ message: 'Registration number not found in registry.' });
+                }
+                if (registryEntry.status === 'revoked') {
+                    return res.status(400).json({ message: 'Registration number is revoked.' });
+                }
+                if (registryEntry.status === 'used' && registryEntry.usedBy?.toString() !== user._id.toString()) {
+                    return res.status(400).json({ message: 'Registration number already used by another user.' });
+                }
+                if (registryEntry.status === 'valid') {
+                    registryEntry.status = 'used';
+                    registryEntry.usedBy = user._id;
+                    await registryEntry.save();
+                }
+            }
             if (user.role !== 'rider') {
                 user.isVerified = true;
             } else {
@@ -210,7 +229,7 @@ export const getAllUsers = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
     const role = req.query.role;
-    const search = req.query.search;
+    const search = (req.query.search || '').trim();
 
     try {
         const query = { role: { $ne: 'admin' } };
@@ -218,10 +237,18 @@ export const getAllUsers = async (req, res) => {
             query.role = role;
         }
         if (search) {
+            const normalized = search.replace(/[^a-zA-Z0-9]/g, '');
+            const flexibleRegPattern = normalized.length >= 3
+                ? normalized.split('').map((ch) => `${ch}[^a-zA-Z0-9]*`).join('')
+                : null;
+            const registrationRegex = flexibleRegPattern
+                ? new RegExp(flexibleRegPattern, 'i')
+                : new RegExp(search, 'i');
+
             query.$or = [
                 { name: { $regex: search, $options: 'i' } },
                 { email: { $regex: search, $options: 'i' } },
-                { registrationNumber: { $regex: search, $options: 'i' } }
+                { registrationNumber: { $regex: registrationRegex } }
             ];
         }
 
@@ -262,6 +289,34 @@ export const deleteUser = async (req, res) => {
         await User.findByIdAndDelete(req.params.id);
 
         res.json({ message: 'User and all associated data deleted successfully' });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+};
+
+// @desc    Block/Unblock a user
+// @route   PATCH /api/admin/users/:id/block
+// @access  Private (Admin)
+export const updateUserBlockStatus = async (req, res) => {
+    try {
+        const { blocked, reason } = req.body;
+        const user = await User.findById(req.params.id);
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        if (user.role === 'admin') {
+            return res.status(400).json({ message: 'Admin users cannot be blocked' });
+        }
+
+        const shouldBlock = Boolean(blocked);
+        user.isBlocked = shouldBlock;
+        user.blockedReason = shouldBlock ? (reason || 'Blocked by admin') : '';
+        user.blockedAt = shouldBlock ? new Date() : null;
+
+        await user.save();
+        res.json({ message: shouldBlock ? 'User blocked' : 'User unblocked', user });
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server Error');

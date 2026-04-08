@@ -132,6 +132,7 @@ const DashboardLayout = ({ children }) => {
         { icon: FaChartLine, label: 'Statistics', path: '/admin/analytics' },
         { icon: FaComments, label: 'System Chat', path: '/admin/messages' },
         { icon: FaUserShield, label: 'Admin Management', path: '/admin/admins' },
+        { icon: FaIdBadge, label: 'Registration Directory', path: '/admin/registrations' },
         { icon: FaUserCog, label: 'Admin Settings', path: '/admin/settings' },
     ];
 

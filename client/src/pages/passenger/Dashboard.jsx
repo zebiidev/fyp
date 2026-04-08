@@ -378,11 +378,11 @@ const PassengerDashboard = () => {
                                             <div className="space-y-6">
                                                 <div>
                                                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Pickup</p>
-                                                    <p className="text-sm font-bold text-slate-700">{dashboardData.currentBooking.pickup}</p>
+                                                    <p className="text-sm font-bold text-slate-700 break-words">{dashboardData.currentBooking.pickup}</p>
                                                 </div>
                                                 <div>
                                                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Dropoff</p>
-                                                    <p className="text-sm font-bold text-slate-700">{dashboardData.currentBooking.dropoff}</p>
+                                                    <p className="text-sm font-bold text-slate-700 break-words">{dashboardData.currentBooking.dropoff}</p>
                                                 </div>
                                             </div>
                                         </div>

@@ -16,7 +16,15 @@ const ChatListItem = ({ chat, active, onClick }) => (
         className={`flex items-center gap-4 p-4 cursor-pointer transition-all border-l-4 ${active ? 'bg-indigo-50 border-primary' : 'bg-white border-transparent hover:bg-slate-50'}`}
     >
         <div className="relative">
-            <img src={chat.avatar} alt={chat.name} className="w-12 h-12 rounded-full border border-slate-100" />
+            <img
+                src={chat.avatar}
+                alt={chat.name}
+                className="w-12 h-12 rounded-full border border-slate-100"
+                onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = chat.fallbackAvatar || chat.avatar;
+                }}
+            />
             {chat.online && <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white"></div>}
         </div>
         <div className="flex-1 min-w-0">
@@ -70,7 +78,9 @@ const Messages = () => {
     const { conversations, messages } = useSelector((state) => state.chat);
     const { user, token } = useSelector((state) => state.auth);
     const currentUserId = user?.id || user?._id || null;
+    const isAdmin = user?.role === 'admin';
     const [selectedChat, setSelectedChat] = useState(null);
+    const [adminContact, setAdminContact] = useState(null);
     const [text, setText] = useState('');
     const [onlineUsers, setOnlineUsers] = useState([]);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -92,31 +102,69 @@ const Messages = () => {
         }
     }, [dispatch, token]);
 
+    useEffect(() => {
+        const loadAdminContact = async () => {
+            if (!token || isAdmin) return;
+            try {
+                const res = await api.get('/chat/admin');
+                setAdminContact(res.data?.user || null);
+            } catch {
+                setAdminContact(null);
+            }
+        };
+        loadAdminContact();
+    }, [isAdmin, token]);
+
     const mappedChats = useMemo(() => {
-        const list = (conversations || []).map((conv) => ({
+        const list = (conversations || []).map((conv) => {
+            const avatarSeed = encodeURIComponent(conv.user.name);
+            const fallbackAvatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${avatarSeed}`;
+            return ({
             id: conv.user._id,
             name: conv.user.name,
-            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(conv.user.name)}`,
+            avatar: conv.user.avatar || fallbackAvatar,
+            fallbackAvatar,
             lastMessage: conv.lastMessage || 'Start conversation',
             time: conv.time ? new Date(conv.time).toLocaleTimeString() : '',
+            timeRaw: conv.time ? new Date(conv.time).getTime() : 0,
             unread: conv.unread || 0,
             online: onlineUsers.includes(conv.user._id.toString())
-        }));
+        })});
+
+        if (adminContact && !list.some((chat) => chat.id === adminContact._id)) {
+            const adminSeed = encodeURIComponent(adminContact.name || 'Admin');
+            const adminFallback = `https://api.dicebear.com/7.x/avataaars/svg?seed=${adminSeed}`;
+            list.unshift({
+                id: adminContact._id,
+                name: adminContact.name || 'Admin Support',
+                avatar: adminContact.avatar || adminFallback,
+                fallbackAvatar: adminFallback,
+                lastMessage: 'Contact admin support',
+                time: '',
+                timeRaw: 0,
+                unread: 0,
+                online: onlineUsers.includes(adminContact._id.toString())
+            });
+        }
 
         if (targetUserId && targetUserId !== currentUserId && !list.some((chat) => chat.id === targetUserId)) {
+            const targetSeed = encodeURIComponent(targetUserName);
+            const targetFallback = `https://api.dicebear.com/7.x/avataaars/svg?seed=${targetSeed}`;
             list.unshift({
                 id: targetUserId,
                 name: targetUserName,
-                avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(targetUserName)}`,
+                avatar: targetFallback,
+                fallbackAvatar: targetFallback,
                 lastMessage: 'Start conversation',
                 time: '',
+                timeRaw: 0,
                 unread: 0,
                 online: onlineUsers.includes(targetUserId.toString())
             });
         }
 
-        return list;
-    }, [conversations, currentUserId, onlineUsers, targetUserId, targetUserName]);
+        return list.sort((a, b) => (b.timeRaw || 0) - (a.timeRaw || 0));
+    }, [adminContact, conversations, currentUserId, onlineUsers, targetUserId, targetUserName]);
 
     useEffect(() => {
         if (targetUserId && targetUserId !== currentUserId) {
@@ -321,7 +369,18 @@ const Messages = () => {
                 </div>
                 <div className="flex-1 overflow-y-auto">
                     {mappedChats.length === 0 ? (
-                        <div className="p-6 text-sm text-slate-500">No conversations yet.</div>
+                        <div className="p-6 text-sm text-slate-500 space-y-3">
+                            <p>No conversations yet.</p>
+                            {adminContact && (
+                                <button
+                                    type="button"
+                                    onClick={() => handleOpenChat(adminContact._id)}
+                                    className="text-xs font-black uppercase tracking-widest text-primary"
+                                >
+                                    Start chat with Admin
+                                </button>
+                            )}
+                        </div>
                     ) : (
                         mappedChats.map((chat) => (
                             <ChatListItem
@@ -347,7 +406,15 @@ const Messages = () => {
                                 <FaArrowLeft size={12} />
                             </button>
                         )}
-                        <img src={activeChat?.avatar} alt="" className="w-10 h-10 rounded-full border" />
+                        <img
+                            src={activeChat?.avatar}
+                            alt=""
+                            className="w-10 h-10 rounded-full border"
+                            onError={(e) => {
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.src = activeChat?.fallbackAvatar || activeChat?.avatar;
+                            }}
+                        />
                         <div>
                             <h4 className="text-sm font-bold text-slate-800">{activeChat?.name}</h4>
                             <div className="flex items-center gap-1">
