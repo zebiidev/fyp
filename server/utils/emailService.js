@@ -23,6 +23,7 @@ const getFromAddress = () => {
 };
 
 export const sendApprovalEmail = async (userEmail, userName) => {
+    console.log(`[email] approval: preparing to send to ${userEmail}`);
     const mailOptions = {
         from: `"Campus Ride Admin" <${getFromAddress()}>`,
         to: userEmail,
@@ -46,16 +47,18 @@ export const sendApprovalEmail = async (userEmail, userName) => {
         if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
             const transporter = getTransporter();
             await transporter.sendMail(mailOptions);
-            console.log(`Approval email sent to ${userEmail}`);
+            console.log(`[email] approval: sent to ${userEmail}`);
         } else {
-            console.log('Skipping email sending (EMAIL_USER or EMAIL_PASS not set).');
+            console.log('[email] approval: skipped (EMAIL_USER or EMAIL_PASS not set).');
         }
     } catch (error) {
-        console.error('Error sending email:', error);
+        console.error('[email] approval: failed to send:', error);
+        throw error;
     }
 };
 
 export const sendRejectionEmail = async (userEmail, userName, reason) => {
+    console.log(`[email] rejection: preparing to send to ${userEmail}`);
     const mailOptions = {
         from: `"Campus Ride Admin" <${getFromAddress()}>`,
         to: userEmail,
@@ -78,12 +81,13 @@ export const sendRejectionEmail = async (userEmail, userName, reason) => {
         if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
             const transporter = getTransporter();
             await transporter.sendMail(mailOptions);
-            console.log(`Rejection email sent to ${userEmail}`);
+            console.log(`[email] rejection: sent to ${userEmail}`);
         } else {
-            console.log('Skipping email sending (EMAIL_USER or EMAIL_PASS not set).');
+            console.log('[email] rejection: skipped (EMAIL_USER or EMAIL_PASS not set).');
         }
     } catch (error) {
-        console.error('Error sending email:', error);
+        console.error('[email] rejection: failed to send:', error);
+        throw error;
     }
 }
 
