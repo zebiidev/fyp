@@ -158,6 +158,10 @@ export const updateUserStatus = async (req, res) => {
     const { status, reason } = req.body; // status: 'approved' or 'rejected'
 
     try {
+        if (!['approved', 'rejected'].includes(status)) {
+            return res.status(400).json({ message: 'Invalid status value' });
+        }
+
         const user = await User.findById(req.params.id);
 
         if (!user) {

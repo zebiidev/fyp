@@ -1,4 +1,4 @@
-import nodemailer from 'nodemailer';
+﻿import nodemailer from 'nodemailer';
 
 // Create transporter conditionally or lazily
 const getTransporter = () => {
@@ -11,19 +11,30 @@ const getTransporter = () => {
     });
 };
 
+const getFrontendUrl = () => {
+    const url = process.env.CLIENT_URL?.trim();
+    return url ? url.replace(/\/+$/, '') : 'http://localhost:5173';
+};
+
+const getFromAddress = () => {
+    // Gmail typically requires the "from" to match the authenticated account.
+    const fromEnv = process.env.EMAIL_FROM?.trim();
+    return fromEnv || process.env.EMAIL_USER?.trim();
+};
+
 export const sendApprovalEmail = async (userEmail, userName) => {
     const mailOptions = {
-        from: '"Campus Ride Admin" <no-reply@campusride.com>',
+        from: `"Campus Ride Admin" <${getFromAddress()}>`,
         to: userEmail,
         subject: 'Account Approved - Campus Ride App',
         html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #4F46E5;">Welcome to Campus Ride! 🚗</h2>
+                <h2 style="color: #4F46E5;">Welcome to Campus Ride!</h2>
                 <p>Hello <strong>${userName}</strong>,</p>
                 <p>Great news! Your account has been approved by the administration.</p>
                 <p>You can now log in and start using the app to find rides or offer them.</p>
                 <br/>
-                <a href="http://localhost:5173/login" style="background-color: #4F46E5; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Login Now</a>
+                <a href="${getFrontendUrl()}/login" style="background-color: #4F46E5; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Login Now</a>
                 <br/><br/>
                 <p>Safe travels,</p>
                 <p>The Campus Ride Team</p>
@@ -46,7 +57,7 @@ export const sendApprovalEmail = async (userEmail, userName) => {
 
 export const sendRejectionEmail = async (userEmail, userName, reason) => {
     const mailOptions = {
-        from: '"Campus Ride Admin" <no-reply@campusride.com>',
+        from: `"Campus Ride Admin" <${getFromAddress()}>`,
         to: userEmail,
         subject: 'Account Update - Campus Ride App',
         html: `
@@ -75,3 +86,4 @@ export const sendRejectionEmail = async (userEmail, userName, reason) => {
         console.error('Error sending email:', error);
     }
 }
+
