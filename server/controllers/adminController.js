@@ -193,13 +193,20 @@ export const updateUserStatus = async (req, res) => {
             } else {
                 user.isVerified = false;
             }
-            await sendApprovalEmail(user.email, user.name);
         } else if (status === 'rejected') {
             user.isVerified = false;
-            await sendRejectionEmail(user.email, user.name, reason || 'Account rejected by admin.');
         }
 
         await user.save();
+
+        // Fire-and-forget: avoid blocking approval response on email delivery.
+        if (status === 'approved') {
+            sendApprovalEmail(user.email, user.name)
+                .catch((emailErr) => console.error('Failed to send approval email:', emailErr.message));
+        } else if (status === 'rejected') {
+            sendRejectionEmail(user.email, user.name, reason || 'Account rejected by admin.')
+                .catch((emailErr) => console.error('Failed to send rejection email:', emailErr.message));
+        }
 
         // In-App Notification
         const io = req.app.get('io');
