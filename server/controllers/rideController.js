@@ -73,6 +73,55 @@ const isFuzzyMatch = (query, target) => {
     return similarity >= 0.7;
 };
 
+const getLocationSimilarityScore = (query, target) => {
+    const normalizedQuery = normalizeLocation(query);
+    const normalizedTarget = normalizeLocation(target);
+
+    if (!normalizedQuery || !normalizedTarget) return 0;
+    if (normalizedQuery === normalizedTarget) return 100;
+    if (normalizedTarget.includes(normalizedQuery) || normalizedQuery.includes(normalizedTarget)) return 88;
+
+    const queryTokens = new Set(normalizedQuery.split(' ').filter(Boolean));
+    const targetTokens = new Set(normalizedTarget.split(' ').filter(Boolean));
+    const sharedTokenCount = [...queryTokens].filter((token) => targetTokens.has(token)).length;
+
+    if (sharedTokenCount > 0) {
+        const tokenScore = Math.round((sharedTokenCount / Math.max(queryTokens.size, targetTokens.size)) * 80);
+        if (tokenScore >= 35) return tokenScore;
+    }
+
+    if (isFuzzyMatch(query, target)) return 60;
+    return 0;
+};
+
+const scoreRideMatch = ({ ride, from, to, userArea }) => {
+    let score = 0;
+    const reasons = [];
+
+    const areaSource = from || userArea;
+    const areaScore = getLocationSimilarityScore(areaSource, ride.pickupLocation);
+    if (areaScore > 0) {
+        score += areaScore;
+        reasons.push(from ? 'Pickup matches your selected area' : 'Pickup matches your saved area');
+    }
+
+    const destinationScore = getLocationSimilarityScore(to, ride.dropoffLocation);
+    if (destinationScore > 0) {
+        score += destinationScore + 10;
+        reasons.push('Drop-off matches your route');
+    }
+
+    if (areaScore > 0 && destinationScore > 0) {
+        score += 20;
+        reasons.push('Full route overlap');
+    }
+
+    return {
+        score: Math.min(score, 100),
+        reasons
+    };
+};
+
 // @desc    Create a new ride
 // @route   POST /api/rides
 // @access  Private (Rider only)
@@ -138,19 +187,25 @@ export const createRide = async (req, res) => {
 // @access  Private
 export const searchRides = async (req, res) => {
     try {
-        const { from, to, date } = req.query;
+        const { from, to, date, useProfileArea } = req.query;
+        const trimmedFrom = String(from || '').trim();
+        const trimmedTo = String(to || '').trim();
+        const shouldUseProfileArea = useProfileArea === 'true';
+        const profileArea = shouldUseProfileArea ? String(req.user.address || '').trim() : '';
+        const effectiveFrom = trimmedFrom || profileArea;
 
         const baseQuery = {
             status: 'scheduled',
-            seatsAvailable: { $gt: 0 }
+            seatsAvailable: { $gt: 0 },
+            driver: { $ne: req.user.id }
         };
 
         const query = { ...baseQuery };
-        const fromRegex = buildFlexibleRegex(from);
+        const fromRegex = buildFlexibleRegex(effectiveFrom);
         if (fromRegex) {
             query.pickupLocation = { $regex: fromRegex };
         }
-        const toRegex = buildFlexibleRegex(to);
+        const toRegex = buildFlexibleRegex(trimmedTo);
         if (toRegex) {
             query.dropoffLocation = { $regex: toRegex };
         }
@@ -171,19 +226,41 @@ export const searchRides = async (req, res) => {
             .populate('driver', 'name averageRating totalRatings vehicleDetails gender')
             .sort({ date: 1, time: 1 });
 
-        if (rides.length === 0 && (from || to)) {
+        if (rides.length === 0 && (effectiveFrom || trimmedTo)) {
             const fallbackRides = await Ride.find(baseQuery)
                 .populate('driver', 'name averageRating totalRatings vehicleDetails gender')
                 .sort({ date: 1, time: 1 });
 
             rides = fallbackRides.filter((ride) => {
-                if (from && !isFuzzyMatch(from, ride.pickupLocation)) return false;
-                if (to && !isFuzzyMatch(to, ride.dropoffLocation)) return false;
+                if (effectiveFrom && !isFuzzyMatch(effectiveFrom, ride.pickupLocation)) return false;
+                if (trimmedTo && !isFuzzyMatch(trimmedTo, ride.dropoffLocation)) return false;
                 return true;
             });
         }
 
-        res.json(rides);
+        const ridesWithMatchMetadata = rides
+            .map((ride) => {
+                const match = scoreRideMatch({
+                    ride,
+                    from: trimmedFrom,
+                    to: trimmedTo,
+                    userArea: profileArea
+                });
+
+                return {
+                    ...ride.toObject(),
+                    matchScore: match.score,
+                    matchReasons: match.reasons
+                };
+            })
+            .sort((a, b) => {
+                if (b.matchScore !== a.matchScore) return b.matchScore - a.matchScore;
+                const aDate = new Date(`${a.date} ${a.time || '00:00'}`).getTime() || 0;
+                const bDate = new Date(`${b.date} ${b.time || '00:00'}`).getTime() || 0;
+                return aDate - bDate;
+            });
+
+        res.json(ridesWithMatchMetadata);
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server Error');

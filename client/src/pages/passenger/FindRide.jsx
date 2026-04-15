@@ -21,7 +21,7 @@ const RideCard = ({ ride, onJoin, isJoining }) => (
                     <div className="flex items-center gap-1 text-[10px] font-bold text-warning">
                         <FaStar size={10} />
                         {ride.ratingsCount > 0 ? (
-                            <span>{ride.rating.toFixed(1)} • {ride.ratingsCount} ratings</span>
+                            <span>{ride.rating.toFixed(1)} | {ride.ratingsCount} ratings</span>
                         ) : (
                             <span>No ratings yet</span>
                         )}
@@ -53,6 +53,17 @@ const RideCard = ({ ride, onJoin, isJoining }) => (
                 </div>
             </div>
         </div>
+
+        {ride.matchScore > 0 ? (
+            <div className="mb-4 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2">
+                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">
+                    Route Match {ride.matchScore}%
+                </p>
+                <p className="mt-1 text-xs font-medium text-emerald-800">
+                    {ride.matchReasons?.length ? ride.matchReasons.join(' | ') : 'This ride overlaps with your route.'}
+                </p>
+            </div>
+        ) : null}
 
         <div className="flex items-center justify-between pt-4 border-t border-slate-50">
             <div className="flex gap-3">
@@ -96,12 +107,14 @@ const RideCard = ({ ride, onJoin, isJoining }) => (
 const FindRide = () => {
     const dispatch = useDispatch();
     const { rides, loading } = useSelector((state) => state.rides);
+    const { user } = useSelector((state) => state.auth);
 
     const [from, setFrom] = useState('');
     const [to, setTo] = useState('');
     const [date, setDate] = useState('');
     const [joiningRideId, setJoiningRideId] = useState(null);
     const [showFilters, setShowFilters] = useState(false);
+    const [usedProfileArea, setUsedProfileArea] = useState(false);
     const [filters, setFilters] = useState({
         minPrice: '',
         maxPrice: '',
@@ -149,21 +162,23 @@ const FindRide = () => {
         return (rides || []).map((ride) => {
             const rideDateTime = getRideDateTime(ride.date, ride.time);
             const isPast = rideDateTime ? rideDateTime.getTime() < Date.now() : false;
-            return ({
-            id: ride._id,
-            driverName: ride.driver?.name || 'Driver',
-            driverImage: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(ride.driver?.name || 'Driver')}`,
-            rating: Number(ride.driver?.averageRating || 0),
-            ratingsCount: Number(ride.driver?.totalRatings || 0),
-            price: ride.pricePerSeat,
-            from: ride.pickupLocation,
-            to: ride.dropoffLocation,
-            date: ride.date ? new Date(ride.date).toLocaleDateString() : 'Today',
-            time: ride.time || 'Time TBD',
-            seatsAvailable: ride.seatsAvailable,
-            driverGender: ride.driver?.gender || 'unknown',
-            isPast
-        });
+            return {
+                id: ride._id,
+                driverName: ride.driver?.name || 'Driver',
+                driverImage: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(ride.driver?.name || 'Driver')}`,
+                rating: Number(ride.driver?.averageRating || 0),
+                ratingsCount: Number(ride.driver?.totalRatings || 0),
+                price: ride.pricePerSeat,
+                from: ride.pickupLocation,
+                to: ride.dropoffLocation,
+                date: ride.date ? new Date(ride.date).toLocaleDateString() : 'Today',
+                time: ride.time || 'Time TBD',
+                seatsAvailable: ride.seatsAvailable,
+                driverGender: ride.driver?.gender || 'unknown',
+                matchScore: Number(ride.matchScore || 0),
+                matchReasons: ride.matchReasons || [],
+                isPast
+            };
         });
     }, [rides]);
 
@@ -210,16 +225,29 @@ const FindRide = () => {
         const fromValue = typeof from === 'string' ? from.trim() : '';
         const toValue = typeof to === 'string' ? to.trim() : '';
         const dateValue = typeof date === 'string' ? date.trim() : '';
-        if (!fromValue && !toValue && !dateValue) {
-            toast.info('Enter at least one search field before searching.');
+        const canUseProfileArea = Boolean(user?.address?.trim());
+        if (!fromValue && !toValue && !dateValue && !usedProfileArea) {
+            toast.info(canUseProfileArea ? 'Enter search details or use your saved area.' : 'Enter at least one search field before searching.');
             return;
         }
-        const result = await dispatch(searchRides({ from, to, date }));
+        const result = await dispatch(searchRides({ from, to, date, useProfileArea: usedProfileArea && !fromValue }));
         if (searchRides.rejected.match(result)) {
             toast.error(result.payload || 'Could not fetch rides.');
         } else if (result.payload?.length === 0) {
             toast.info('No rides found. Try adjusting your search.');
         }
+    };
+
+    const handleUseMyArea = () => {
+        const address = user?.address?.trim();
+        if (!address) {
+            toast.info('Add your address in profile settings first to use area matching.');
+            return;
+        }
+
+        setFrom(address);
+        setUsedProfileArea(true);
+        toast.success('Your saved area has been added as the pickup location.');
     };
 
     const handleJoin = async (rideId) => {
@@ -238,9 +266,16 @@ const FindRide = () => {
             <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-800">Find a Ride</h1>
-                    <p className="text-sm text-slate-500">Discover available rides on campus</p>
+                    <p className="text-sm text-slate-500">Discover riders from your area and along your route</p>
                 </div>
                 <div className="flex gap-2">
+                    <button
+                        type="button"
+                        onClick={handleUseMyArea}
+                        className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-4 py-2 rounded-xl text-sm font-bold text-emerald-700 hover:bg-emerald-100 transition-all"
+                    >
+                        <FaMapMarkerAlt size={12} /> Use My Area
+                    </button>
                     <button
                         type="button"
                         onClick={() => setShowFilters((prev) => !prev)}
@@ -266,7 +301,11 @@ const FindRide = () => {
                         <input
                             type="text"
                             value={from}
-                            onChange={(e) => setFrom(e.target.value)}
+                            onChange={(e) => {
+                                const nextValue = e.target.value;
+                                setFrom(nextValue);
+                                setUsedProfileArea(Boolean(user?.address?.trim()) && nextValue.trim() === user.address.trim());
+                            }}
                             placeholder="Starting point..."
                             className="w-full bg-slate-50 border-none rounded-xl pl-10 pr-4 py-3 text-sm focus:ring-2 focus:ring-primary transition-all"
                         />
@@ -295,6 +334,21 @@ const FindRide = () => {
                         />
                     </div>
                 </div>
+                {user?.address ? (
+                    <div className="mt-4 rounded-xl bg-slate-50 border border-slate-100 px-4 py-3">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Saved Area</p>
+                        <div className="mt-1 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                            <p className="text-sm font-medium text-slate-700">{user.address}</p>
+                            <button
+                                type="button"
+                                onClick={handleUseMyArea}
+                                className="text-xs font-black uppercase tracking-widest text-primary"
+                            >
+                                Match Riders Near Me
+                            </button>
+                        </div>
+                    </div>
+                ) : null}
                 {showFilters && (
                     <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-slate-100 pt-6">
                         <div className="relative">

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo ,useRef, useState} from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FaCar, FaUsers, FaCheck, FaTimes, FaComments, FaHistory } from 'react-icons/fa';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
@@ -159,6 +159,7 @@ const ManageRides = () => {
     const [processingStatusId, setProcessingStatusId] = useState(null);
     const [trackingRideIds, setTrackingRideIds] = useState(new Set());
     const watchIdsRef = useRef(new Map());
+    const pendingConnectHandlersRef = useRef(new Map());
 
     useEffect(() => {
         dispatch(fetchMyRides());
@@ -166,16 +167,72 @@ const ManageRides = () => {
 
     useEffect(() => {
         return () => {
+            const socket = token ? getSocket(token) : null;
+            pendingConnectHandlersRef.current.forEach((handler) => {
+                socket?.off('connect', handler);
+            });
+            pendingConnectHandlersRef.current.clear();
+
             watchIdsRef.current.forEach((watchId) => {
                 navigator.geolocation?.clearWatch(watchId);
             });
+            if (socket) {
+                Array.from(watchIdsRef.current.keys()).forEach((rideId) => {
+                    socket.emit('stop_ride_tracking', { rideId });
+                });
+            }
             watchIdsRef.current.clear();
         };
-    }, []);
+    }, [token]);
 
     const activeRides = useMemo(() => {
         return (myRides || []).filter(r => ['scheduled', 'active'].includes(r.status));
     }, [myRides]);
+
+    const stopTrackingForRide = useCallback((rideId, options = {}) => {
+        const { silent = false } = options;
+        const socket = token ? getSocket(token) : null;
+
+        const pendingConnectHandler = pendingConnectHandlersRef.current.get(rideId);
+        if (pendingConnectHandler && socket) {
+            socket.off('connect', pendingConnectHandler);
+        }
+        pendingConnectHandlersRef.current.delete(rideId);
+
+        const watchId = watchIdsRef.current.get(rideId);
+        if (watchId != null) {
+            navigator.geolocation.clearWatch(watchId);
+            watchIdsRef.current.delete(rideId);
+        }
+
+        if (socket) {
+            socket.emit('stop_ride_tracking', { rideId });
+        }
+
+        setTrackingRideIds((prev) => {
+            const next = new Set(prev);
+            next.delete(rideId);
+            return next;
+        });
+
+        if (!silent) {
+            toast.info('Live location sharing stopped.');
+        }
+    }, [token]);
+
+    useEffect(() => {
+        const activeRideIdSet = new Set(
+            (myRides || [])
+                .filter((ride) => ride?.status === 'active')
+                .map((ride) => String(ride._id))
+        );
+
+        Array.from(trackingRideIds).forEach((rideId) => {
+            if (!activeRideIdSet.has(String(rideId))) {
+                stopTrackingForRide(rideId, { silent: true });
+            }
+        });
+    }, [myRides, stopTrackingForRide, trackingRideIds]);
 
     const handleAction = async (rideId, passengerId, status) => {
         setProcessingRequestId(passengerId);
@@ -195,6 +252,9 @@ const ManageRides = () => {
     const handleStatusChange = async (rideId, status) => {
         setProcessingStatusId(rideId);
         try {
+            if (status !== 'active') {
+                stopTrackingForRide(rideId, { silent: true });
+            }
             await dispatch(updateRideStatus({ rideId, status })).unwrap();
             toast.success(`Ride marked as ${status}`);
             dispatch(fetchMyRides());
@@ -254,22 +314,14 @@ const ManageRides = () => {
             } else {
                 const onConnect = () => {
                     socket.off('connect', onConnect);
+                    pendingConnectHandlersRef.current.delete(rideId);
                     startWatch();
                 };
+                pendingConnectHandlersRef.current.set(rideId, onConnect);
                 socket.on('connect', onConnect);
             }
         } else {
-            const watchId = watchIdsRef.current.get(rideId);
-            if (watchId != null) {
-                navigator.geolocation.clearWatch(watchId);
-                watchIdsRef.current.delete(rideId);
-            }
-            setTrackingRideIds((prev) => {
-                const next = new Set(prev);
-                next.delete(rideId);
-                return next;
-            });
-            toast.info('Live location sharing stopped.');
+            stopTrackingForRide(rideId);
         }
     };
 

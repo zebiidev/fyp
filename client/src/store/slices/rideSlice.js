@@ -18,13 +18,14 @@ export const searchRides = createAsyncThunk(
     'rides/search',
     async (searchParams, { rejectWithValue }) => {
         try {
-            const { from, to, date } = searchParams;
+            const { from, to, date, useProfileArea } = searchParams;
             const params = new URLSearchParams();
             const fromValue = typeof from === 'string' ? from.trim() : '';
             const toValue = typeof to === 'string' ? to.trim() : '';
             if (fromValue) params.append('from', fromValue);
             if (toValue) params.append('to', toValue);
             if (date) params.append('date', date);
+            if (useProfileArea) params.append('useProfileArea', 'true');
             const query = params.toString();
             const res = await api.get(`/rides${query ? `?${query}` : ''}`);
             return res.data;

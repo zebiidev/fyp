@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { GoogleMap, Marker, useLoadScript } from '@react-google-maps/api';
 import { useSelector } from 'react-redux';
 import { getSocket } from '../../utils/socket';
@@ -75,6 +75,16 @@ const PassengerLiveMap = ({ rideId, pickupLocation, dropoffLocation }) => {
             }
         };
 
+        const handleTrackingStopped = (payload) => {
+            if (payload?.rideId !== rideId) return;
+            setRiderPos(null);
+        };
+
+        const handleTrackingError = (payload) => {
+            if (payload?.rideId !== rideId || !payload?.message) return;
+            setGeoError(payload.message);
+        };
+
         // Helper: join the tracking room (safe to call multiple times)
         const joinRoom = () => {
             socket.emit('join_ride_tracking', { rideId });
@@ -84,13 +94,17 @@ const PassengerLiveMap = ({ rideId, pickupLocation, dropoffLocation }) => {
         if (socket.connected) {
             joinRoom();
         }
-        socket.on('connect', joinRoom);       // handles first-time + reconnects
+        socket.on('connect', joinRoom);
         socket.on('ride_location_update', handleUpdate);
+        socket.on('tracking_stopped', handleTrackingStopped);
+        socket.on('tracking_error', handleTrackingError);
 
         return () => {
             socket.emit('leave_ride_tracking', { rideId });
             socket.off('connect', joinRoom);
             socket.off('ride_location_update', handleUpdate);
+            socket.off('tracking_stopped', handleTrackingStopped);
+            socket.off('tracking_error', handleTrackingError);
         };
     }, [rideId, token]);
 
