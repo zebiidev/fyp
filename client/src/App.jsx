@@ -8,6 +8,7 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import PendingApproval from "./pages/PendingApproval";
 import PassengerDashboard from "./pages/passenger/Dashboard";
+import AreaRiders from "./pages/passenger/AreaRiders";
 import FindRide from "./pages/passenger/FindRide";
 import MyBookings from "./pages/passenger/MyBookings";
 import TrackRide from "./pages/passenger/TrackRide";
@@ -80,6 +81,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={["passenger"]}>
                   {wrapWithLayout(<PassengerDashboard />)}
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/passenger/area-riders"
+              element={
+                <ProtectedRoute allowedRoles={["passenger"]}>
+                  {wrapWithLayout(<AreaRiders />)}
                 </ProtectedRoute>
               }
             />

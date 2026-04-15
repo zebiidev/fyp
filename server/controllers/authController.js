@@ -2,6 +2,66 @@ import User from '../models/User.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 
+const ADDRESS_STOP_WORDS = new Set([
+    'house', 'home', 'street', 'st', 'road', 'rd', 'lane', 'ln', 'sector',
+    'phase', 'plot', 'flat', 'apt', 'apartment', 'near', 'opposite', 'opp',
+    'behind', 'beside', 'block', 'blk', 'no', 'number'
+]);
+
+const normalizeAddress = (value) =>
+    String(value || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+const extractAreaTokens = (address) => {
+    const normalized = normalizeAddress(address);
+    if (!normalized) return [];
+
+    const cleanedTokens = normalized
+        .split(' ')
+        .filter(Boolean)
+        .filter((token) => !/^\d+[a-z]*$/i.test(token))
+        .filter((token) => token.length > 1)
+        .filter((token) => !ADDRESS_STOP_WORDS.has(token));
+
+    return [...new Set(cleanedTokens.slice(-4))];
+};
+
+const formatAreaLabel = (tokens) =>
+    tokens
+        .map((token) => token.charAt(0).toUpperCase() + token.slice(1))
+        .join(' ');
+
+const getAreaMatch = (sourceAddress, candidateAddress) => {
+    const sourceTokens = extractAreaTokens(sourceAddress);
+    const candidateTokens = extractAreaTokens(candidateAddress);
+
+    if (!sourceTokens.length || !candidateTokens.length) {
+        return { isMatch: false, score: 0, sharedTokens: [], sourceLabel: '', candidateLabel: '' };
+    }
+
+    const candidateSet = new Set(candidateTokens);
+    const sharedTokens = sourceTokens.filter((token) => candidateSet.has(token));
+    const unionSize = new Set([...sourceTokens, ...candidateTokens]).size;
+    const overlapRatio = unionSize > 0 ? sharedTokens.length / unionSize : 0;
+    const subsetMatch =
+        sharedTokens.length > 0 &&
+        (sharedTokens.length === sourceTokens.length || sharedTokens.length === candidateTokens.length);
+
+    return {
+        isMatch: sharedTokens.length >= 2 || subsetMatch || overlapRatio >= 0.5,
+        score: Math.min(
+            100,
+            Math.round((sharedTokens.length / Math.max(sourceTokens.length, candidateTokens.length)) * 100)
+        ),
+        sharedTokens,
+        sourceLabel: formatAreaLabel(sourceTokens),
+        candidateLabel: formatAreaLabel(candidateTokens)
+    };
+};
+
 // Generate JWT Token
 const generateToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -177,6 +237,62 @@ export const updateProfile = async (req, res) => {
         }
 
         res.json(user);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+};
+
+// @desc    Get approved riders from the same area as the logged-in passenger
+// @route   GET /api/auth/riders-from-area
+// @access  Private (Passenger only)
+export const getRidersFromArea = async (req, res) => {
+    try {
+        if (req.user.role !== 'passenger') {
+            return res.status(403).json({ message: 'Only passengers can view riders from their area.' });
+        }
+
+        const passenger = await User.findById(req.user.id).select('address');
+        const passengerAddress = String(passenger?.address || '').trim();
+
+        if (!passengerAddress) {
+            return res.status(400).json({ message: 'Add your address first to view riders from your area.' });
+        }
+
+        const riders = await User.find({
+            role: 'rider',
+            accountStatus: 'approved',
+            isBlocked: false,
+            address: { $exists: true, $ne: '' },
+            _id: { $ne: req.user.id }
+        }).select('name email registrationNumber department programme semester gender address avatar averageRating totalRatings vehicleDetails');
+
+        const matchedRiders = riders
+            .map((rider) => {
+                const areaMatch = getAreaMatch(passengerAddress, rider.address);
+                if (!areaMatch.isMatch) return null;
+
+                return {
+                    ...rider.toObject(),
+                    areaMatch: {
+                        score: areaMatch.score,
+                        sharedTokens: areaMatch.sharedTokens,
+                        passengerArea: areaMatch.sourceLabel,
+                        riderArea: areaMatch.candidateLabel
+                    }
+                };
+            })
+            .filter(Boolean)
+            .sort((a, b) => {
+                if (b.areaMatch.score !== a.areaMatch.score) return b.areaMatch.score - a.areaMatch.score;
+                return (b.averageRating || 0) - (a.averageRating || 0);
+            });
+
+        res.json({
+            passengerAddress,
+            passengerArea: formatAreaLabel(extractAreaTokens(passengerAddress)),
+            riders: matchedRiders
+        });
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server Error');

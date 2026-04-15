@@ -103,6 +103,7 @@ const DashboardLayout = ({ children }) => {
 
     const passengerMenuItems = [
         { icon: FaChartPie, label: 'Overview', path: '/passenger/dashboard' },
+        { icon: FaUsers, label: 'Riders from my area', path: '/passenger/area-riders' },
         { icon: FaSearch, label: 'Find Ride', path: '/passenger/find' },
         { icon: FaClipboardList, label: 'My Bookings', path: '/passenger/bookings' },
         { icon: FaComments, label: 'Messages', path: '/passenger/messages' },
