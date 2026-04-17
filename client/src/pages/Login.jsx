@@ -55,7 +55,7 @@ const Login = () => {
                     Welcome Back
                 </h2>
                 <p className="mt-2 text-center text-sm text-slate-600">
-                    Log in to your Smart Campus account
+                    Log in to your UniGo account
                 </p>
             </div>
 

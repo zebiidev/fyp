@@ -52,7 +52,7 @@ const Home = () => {
         <header className="text-center mb-12">
           <FaCar className="text-6xl text-primary mx-auto mb-4" />
           <h1 className="text-4xl font-bold text-slate-900 mb-2">
-            FYP: Smart Campus Ride Sharing
+            FYP: UniGo
           </h1>
           <p className="text-slate-600 text-lg">
             Current Theme Class:{" "}
