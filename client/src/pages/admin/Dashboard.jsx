@@ -6,6 +6,13 @@ import {
 } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import api from '../../utils/api';
+import Loader from '../../components/ui/Loader';
+import {
+    PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
+    RadialBarChart, RadialBar, Legend
+} from 'recharts';
+
+const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 const AdminStat = ({ icon: Icon, label, value, trend, color }) => (
     <motion.div whileHover={{ y: -5 }} className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
@@ -22,6 +29,17 @@ const AdminStat = ({ icon: Icon, label, value, trend, color }) => (
     </motion.div>
 );
 
+const CustomTooltip = ({ active, payload }) => {
+    if (active && payload && payload.length) {
+        return (
+            <div className="bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-2xl text-xs font-bold">
+                <span className="capitalize">{payload[0].name}</span>: {payload[0].value}
+            </div>
+        );
+    }
+    return null;
+};
+
 const AdminDashboard = () => {
     const [stats, setStats] = useState({
         totalUsers: 0,
@@ -31,6 +49,7 @@ const AdminDashboard = () => {
         pendingVerifications: 0
     });
     const [alerts, setAlerts] = useState([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const load = async () => {
@@ -52,10 +71,46 @@ const AdminDashboard = () => {
                 }
             } catch (err) {
                 toast.error('Failed to load dashboard stats');
+            } finally {
+                setLoading(false);
             }
         };
         load();
     }, []);
+
+    if (loading) {
+        return <Loader fullPage message="Loading dashboard data..." />;
+    }
+
+    // Pie chart data for User Mix
+    const userMixData = [
+        { name: 'Riders', value: stats.totalRiders },
+        { name: 'Passengers', value: stats.totalPassengers },
+        { name: 'Others', value: Math.max(0, stats.totalUsers - stats.totalRiders - stats.totalPassengers) }
+    ].filter(d => d.value > 0);
+
+    // Radial bar data for Operational Health
+    const opHealthData = [
+        {
+            name: 'Active Rides',
+            value: Math.min(100, (stats.activeRides / Math.max(1, stats.totalRiders)) * 100),
+            count: stats.activeRides,
+            fill: '#10b981'
+        },
+        {
+            name: 'Pending Verifications',
+            value: Math.min(100, (stats.pendingVerifications / Math.max(1, stats.totalRiders)) * 100),
+            count: stats.pendingVerifications,
+            fill: '#f59e0b'
+        }
+    ];
+
+    const renderCustomLabel = ({ cx, cy }) => (
+        <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central">
+            <tspan x={cx} dy="-8" className="text-2xl font-black fill-slate-800">{stats.totalUsers}</tspan>
+            <tspan x={cx} dy="22" className="text-[10px] font-bold fill-slate-400 uppercase tracking-widest">Total Users</tspan>
+        </text>
+    );
 
     return (
         <div className="space-y-8 pb-10">
@@ -83,87 +138,96 @@ const AdminDashboard = () => {
 
                         {stats.totalUsers > 0 ? (
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                {/* User Mix */}
+                                {/* User Mix — Donut Chart */}
                                 <div className="p-6 rounded-[32px] bg-slate-50 border border-slate-100">
-                                    <div className="flex items-center justify-between mb-6">
+                                    <div className="flex items-center justify-between mb-4">
                                         <h4 className="text-sm font-black text-slate-800">User Mix</h4>
                                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
                                             Total {stats.totalUsers}
                                         </span>
                                     </div>
-                                    <div className="space-y-4">
-                                        <div className="h-3 rounded-full bg-slate-200 overflow-hidden">
-                                            <motion.div
-                                                initial={{ width: 0 }}
-                                                animate={{
-                                                    width: `${Math.min(100, (stats.totalRiders / stats.totalUsers) * 100)}%`
-                                                }}
-                                                transition={{ duration: 0.9, ease: 'easeOut' }}
-                                                className="h-full bg-gradient-to-r from-indigo-500 to-indigo-300"
-                                            />
-                                        </div>
-                                        <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
-                                            <span>Riders</span>
-                                            <span>{stats.totalRiders}</span>
-                                        </div>
-                                        <div className="h-3 rounded-full bg-slate-200 overflow-hidden">
-                                            <motion.div
-                                                initial={{ width: 0 }}
-                                                animate={{
-                                                    width: `${Math.min(100, (stats.totalPassengers / stats.totalUsers) * 100)}%`
-                                                }}
-                                                transition={{ duration: 0.9, ease: 'easeOut', delay: 0.1 }}
-                                                className="h-full bg-gradient-to-r from-emerald-500 to-emerald-300"
-                                            />
-                                        </div>
-                                        <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
-                                            <span>Passengers</span>
-                                            <span>{stats.totalPassengers}</span>
-                                        </div>
+                                    <div className="h-52">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie
+                                                    data={userMixData}
+                                                    cx="50%"
+                                                    cy="50%"
+                                                    innerRadius={55}
+                                                    outerRadius={80}
+                                                    paddingAngle={4}
+                                                    dataKey="value"
+                                                    strokeWidth={0}
+                                                    labelLine={false}
+                                                    label={renderCustomLabel}
+                                                >
+                                                    {userMixData.map((entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                    ))}
+                                                </Pie>
+                                                <Tooltip content={<CustomTooltip />} />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                    <div className="flex items-center justify-center gap-6 mt-2">
+                                        {userMixData.map((entry, index) => (
+                                            <div key={entry.name} className="flex items-center gap-2">
+                                                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></span>
+                                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{entry.name}</span>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
 
-                                {/* Operational Health */}
+                                {/* Operational Health — Radial Bar */}
                                 <div className="p-6 rounded-[32px] bg-slate-50 border border-slate-100">
-                                    <div className="flex items-center justify-between mb-6">
+                                    <div className="flex items-center justify-between mb-4">
                                         <h4 className="text-sm font-black text-slate-800">Operational Health</h4>
                                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Now</span>
                                     </div>
-                                    <div className="space-y-5">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3 text-slate-600 text-xs font-bold">
-                                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                                                Active Rides
+                                    <div className="h-52">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <RadialBarChart
+                                                cx="50%"
+                                                cy="50%"
+                                                innerRadius="35%"
+                                                outerRadius="90%"
+                                                barSize={14}
+                                                data={opHealthData}
+                                                startAngle={210}
+                                                endAngle={-30}
+                                            >
+                                                <RadialBar
+                                                    background={{ fill: '#f1f5f9' }}
+                                                    clockWise
+                                                    dataKey="value"
+                                                    cornerRadius={10}
+                                                />
+                                                <Tooltip
+                                                    content={({ active, payload }) => {
+                                                        if (active && payload && payload.length) {
+                                                            return (
+                                                                <div className="bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-2xl text-xs font-bold">
+                                                                    {payload[0].payload.name}: {payload[0].payload.count}
+                                                                </div>
+                                                            );
+                                                        }
+                                                        return null;
+                                                    }}
+                                                />
+                                            </RadialBarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                    <div className="flex flex-col gap-3 mt-2">
+                                        {opHealthData.map((entry) => (
+                                            <div key={entry.name} className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.fill }}></span>
+                                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{entry.name}</span>
+                                                </div>
+                                                <span className="text-sm font-black text-slate-800">{entry.count}</span>
                                             </div>
-                                            <span className="text-sm font-black text-slate-800">{stats.activeRides}</span>
-                                        </div>
-                                        <div className="h-2.5 rounded-full bg-slate-200 overflow-hidden">
-                                            <motion.div
-                                                initial={{ width: 0 }}
-                                                animate={{
-                                                    width: `${Math.min(100, (stats.activeRides / Math.max(1, stats.totalRiders)) * 100)}%`
-                                                }}
-                                                transition={{ duration: 0.9, ease: 'easeOut' }}
-                                                className="h-full bg-gradient-to-r from-emerald-500 to-emerald-300"
-                                            />
-                                        </div>
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3 text-slate-600 text-xs font-bold">
-                                                <span className="w-2.5 h-2.5 rounded-full bg-orange-400"></span>
-                                                Pending Verifications
-                                            </div>
-                                            <span className="text-sm font-black text-slate-800">{stats.pendingVerifications}</span>
-                                        </div>
-                                        <div className="h-2.5 rounded-full bg-slate-200 overflow-hidden">
-                                            <motion.div
-                                                initial={{ width: 0 }}
-                                                animate={{
-                                                    width: `${Math.min(100, (stats.pendingVerifications / Math.max(1, stats.totalRiders)) * 100)}%`
-                                                }}
-                                                transition={{ duration: 0.9, ease: 'easeOut', delay: 0.1 }}
-                                                className="h-full bg-gradient-to-r from-orange-400 to-orange-200"
-                                            />
-                                        </div>
+                                        ))}
                                     </div>
                                 </div>
                             </div>

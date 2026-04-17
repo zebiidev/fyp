@@ -304,7 +304,7 @@ const Signup = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-xl shadow-md text-sm font-bold text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all duration-200 transform hover:-translate-y-0.5 active:translate-y-0"
+                className={`w-full flex justify-center py-2.5 px-4 border border-transparent rounded-xl shadow-md text-sm font-bold text-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary ${loading ? 'bg-indigo-400 cursor-not-allowed opacity-80' : 'bg-primary hover:bg-primary-dark transform hover:-translate-y-0.5 active:translate-y-0'}`}
               >
                 {loading ? "Creating Account..." : "Get Started"}
               </button>

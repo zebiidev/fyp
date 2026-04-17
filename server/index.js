@@ -23,11 +23,15 @@ import Ride from './models/Ride.js';
 
 const app = express();
 const httpServer = createServer(app);
-const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
+const allowedOrigins = [
+    process.env.CLIENT_URL,
+    'http://localhost:5173',
+    'http://127.0.0.1:5173'
+].filter(Boolean);
 
 const io = new Server(httpServer, {
     cors: {
-        origin: CLIENT_URL,
+        origin: allowedOrigins,
         methods: ["GET", "POST"]
     }
 });
@@ -52,7 +56,7 @@ app.set('io', io);
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-app.use(cors({ origin: CLIENT_URL }));
+app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
 
 // Database Connection
