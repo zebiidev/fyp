@@ -44,11 +44,11 @@ const RideCard = ({ ride, onJoin, isJoining }) => (
                 <div className="flex-1 space-y-2">
                     <div>
                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">From</p>
-                        <p className="text-xs font-bold text-slate-700">{ride.from}</p>
+                        <p className="text-xs font-bold text-slate-700 break-words leading-snug">{ride.from}</p>
                     </div>
                     <div>
                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">To</p>
-                        <p className="text-xs font-bold text-slate-700">{ride.to}</p>
+                        <p className="text-xs font-bold text-slate-700 break-words leading-snug">{ride.to}</p>
                     </div>
                 </div>
             </div>
@@ -59,14 +59,14 @@ const RideCard = ({ ride, onJoin, isJoining }) => (
                 <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">
                     Route Match {ride.matchScore}%
                 </p>
-                <p className="mt-1 text-xs font-medium text-emerald-800">
-                    {ride.matchReasons?.length ? ride.matchReasons.join(' | ') : 'This ride overlaps with your route.'}
+                <p className="mt-1 text-xs font-medium text-emerald-800 leading-snug break-words">
+                    {ride.matchReasons?.length ? ride.matchReasons.join(' • ') : 'This ride overlaps with your route.'}
                 </p>
             </div>
         ) : null}
 
-        <div className="flex items-center justify-between pt-4 border-t border-slate-50">
-            <div className="flex gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-50">
+            <div className="flex flex-1 min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
                 <div className="flex items-center gap-1.5 text-slate-500">
                     <FaCalendarAlt size={12} />
                     <span className="text-[10px] font-bold">{ride.date}</span>
@@ -89,7 +89,7 @@ const RideCard = ({ ride, onJoin, isJoining }) => (
                 whileTap={{ scale: 0.95 }}
                 onClick={() => onJoin(ride.id)}
                 disabled={isJoining || ride.isPast}
-                className="bg-indigo-50 text-primary px-4 py-2 rounded-xl group-hover:bg-primary group-hover:text-white transition-all text-[10px] font-bold uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
+                className="shrink-0 bg-indigo-50 text-primary px-4 py-2 rounded-xl group-hover:bg-primary group-hover:text-white transition-all text-[10px] font-bold uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
             >
                 {isJoining ? (
                     <span>Requesting...</span>
