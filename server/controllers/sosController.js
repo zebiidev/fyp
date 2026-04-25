@@ -3,6 +3,7 @@ import User from '../models/User.js';
 import Ride from '../models/Ride.js';
 import { createNotification } from './notificationController.js';
 import { sendSms } from '../services/smsService.js';
+import { reverseGeocodeNominatim } from '../utils/reverseGeocode.js';
 
 const buildMapsLink = (location) => {
     if (!location || typeof location.lat !== 'number' || typeof location.lng !== 'number') {
@@ -45,11 +46,20 @@ export const createSosAlert = async (req, res) => {
         }
 
         const mapLink = buildMapsLink(location);
+        // Human-readable location helps admins more than raw lat/lng.
+        // We keep the maps link too, because it's the most precise.
+        const placeName = location ? await reverseGeocodeNominatim(location) : null;
+        const coords =
+            location && typeof location.lat === 'number' && typeof location.lng === 'number'
+                ? `${location.lat}, ${location.lng}`
+                : null;
         const smsLines = [
             'SOS ALERT',
             `${user.role?.toUpperCase() || 'USER'}: ${user.name || 'Unknown'}`,
             user.phoneNumber ? `Phone: ${user.phoneNumber}` : 'Phone: N/A',
             rideSummary ? `Ride: ${rideSummary}` : '',
+            placeName ? `Place: ${placeName}` : '',
+            coords ? `Coords: ${coords}` : '',
             mapLink ? `Loc: ${mapLink}` : 'Loc: N/A',
             `Time: ${formatTime(new Date())}`
         ].filter(Boolean);
