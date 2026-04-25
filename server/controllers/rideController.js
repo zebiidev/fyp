@@ -223,12 +223,12 @@ export const searchRides = async (req, res) => {
         }
 
         let rides = await Ride.find(query)
-            .populate('driver', 'name averageRating totalRatings vehicleDetails gender')
+            .populate('driver', 'name avatar averageRating totalRatings vehicleDetails gender')
             .sort({ date: 1, time: 1 });
 
         if (rides.length === 0 && (effectiveFrom || trimmedTo)) {
             const fallbackRides = await Ride.find(baseQuery)
-                .populate('driver', 'name averageRating totalRatings vehicleDetails gender')
+                .populate('driver', 'name avatar averageRating totalRatings vehicleDetails gender')
                 .sort({ date: 1, time: 1 });
 
             rides = fallbackRides.filter((ride) => {

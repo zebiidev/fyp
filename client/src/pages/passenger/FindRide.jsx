@@ -15,7 +15,16 @@ const RideCard = ({ ride, onJoin, isJoining }) => (
     >
         <div className="flex justify-between items-start mb-4">
             <div className="flex items-center gap-3">
-                <img src={ride.driverImage} alt={ride.driverName} className="w-10 h-10 rounded-full border border-indigo-100" />
+                <img
+                    src={ride.driverImage}
+                    alt={ride.driverName}
+                    className="w-10 h-10 rounded-full border border-indigo-100 object-cover"
+                    onError={(e) => {
+                        if (ride.fallbackDriverImage && e.currentTarget.src !== ride.fallbackDriverImage) {
+                            e.currentTarget.src = ride.fallbackDriverImage;
+                        }
+                    }}
+                />
                 <div>
                     <h4 className="text-sm font-bold text-slate-800">{ride.driverName}</h4>
                     <div className="flex items-center gap-1 text-[10px] font-bold text-warning">
@@ -60,7 +69,7 @@ const RideCard = ({ ride, onJoin, isJoining }) => (
                     Route Match {ride.matchScore}%
                 </p>
                 <p className="mt-1 text-xs font-medium text-emerald-800 leading-snug break-words">
-                    {ride.matchReasons?.length ? ride.matchReasons.join(' • ') : 'This ride overlaps with your route.'}
+                    {ride.matchReasons?.length ? ride.matchReasons.join(' \u2022 ') : 'This ride overlaps with your route.'}
                 </p>
             </div>
         ) : null}
@@ -162,10 +171,13 @@ const FindRide = () => {
         return (rides || []).map((ride) => {
             const rideDateTime = getRideDateTime(ride.date, ride.time);
             const isPast = rideDateTime ? rideDateTime.getTime() < Date.now() : false;
+            const avatarSeed = encodeURIComponent(ride.driver?.name || 'Driver');
+            const fallbackAvatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${avatarSeed}`;
             return {
                 id: ride._id,
                 driverName: ride.driver?.name || 'Driver',
-                driverImage: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(ride.driver?.name || 'Driver')}`,
+                driverImage: ride.driver?.avatar || fallbackAvatar,
+                fallbackDriverImage: fallbackAvatar,
                 rating: Number(ride.driver?.averageRating || 0),
                 ratingsCount: Number(ride.driver?.totalRatings || 0),
                 price: ride.pricePerSeat,
