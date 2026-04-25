@@ -83,7 +83,7 @@ const BookingCard = ({ booking }) => {
                     ) : null}
                     {booking.chatUserId ? (
                         <Link
-                            to={`/passenger/messages?userId=${encodeURIComponent(booking.chatUserId)}&name=${encodeURIComponent(booking.chatUserName || 'Rider')}`}
+                            to={`/passenger/messages?userId=${encodeURIComponent(booking.chatUserId)}&name=${encodeURIComponent(booking.chatUserName || 'Rider')}&rideId=${encodeURIComponent(booking.id)}`}
                             className="inline-flex items-center gap-1 text-[10px] font-bold text-primary"
                         >
                             <FaComments size={10} /> Chat

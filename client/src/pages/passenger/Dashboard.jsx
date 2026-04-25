@@ -469,7 +469,7 @@ const PassengerDashboard = () => {
                                                 </span>
                                             ) : null}
                                             <Link
-                                                to={`/passenger/messages?userId=${encodeURIComponent(dashboardData.currentBooking.driver.id)}&name=${encodeURIComponent(dashboardData.currentBooking.driver.name)}`}
+                                                to={`/passenger/messages?userId=${encodeURIComponent(dashboardData.currentBooking.driver.id)}&name=${encodeURIComponent(dashboardData.currentBooking.driver.name)}&rideId=${encodeURIComponent(dashboardData.currentBooking.id)}`}
                                                 className="block text-center w-full bg-indigo-50 text-primary py-2 rounded-xl text-xs font-bold hover:bg-primary hover:text-white transition-all"
                                             >
                                                 Open Chat

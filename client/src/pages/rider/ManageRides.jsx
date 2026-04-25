@@ -128,7 +128,7 @@ const RideCard = ({ ride, onAction, onStatusChange, onToggleTracking, isTracking
                                 {req.status === 'accepted' ? (
                                     <>
                                         <Link
-                                            to={`/rider/messages?userId=${req.user?._id}&name=${encodeURIComponent(req.user?.name)}`}
+                                            to={`/rider/messages?userId=${req.user?._id}&name=${encodeURIComponent(req.user?.name)}&rideId=${encodeURIComponent(ride._id)}`}
                                             className="p-2.5 bg-indigo-50 text-primary rounded-xl hover:bg-primary hover:text-white transition-all"
                                             title="Chat"
                                         >

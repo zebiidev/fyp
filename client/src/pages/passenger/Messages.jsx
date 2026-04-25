@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { FaSearch, FaPaperPlane, FaPaperclip, FaSmile, FaCheckDouble, FaCircle, FaTrashAlt, FaArrowLeft } from 'react-icons/fa';
+import { FaSearch, FaPaperPlane, FaPaperclip, FaSmile, FaCheckDouble, FaCircle, FaTrashAlt, FaArrowLeft, FaPhone } from 'react-icons/fa';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSearchParams } from 'react-router-dom';
 import { io } from 'socket.io-client';
@@ -91,6 +91,8 @@ const Messages = () => {
     const fileInputRef = useRef(null);
     const targetUserId = searchParams.get('userId');
     const targetUserName = searchParams.get('name') || 'User';
+    const rideId = searchParams.get('rideId');
+    const showCallButton = Boolean(rideId) && Boolean(targetUserId) && selectedChat?.toString() === targetUserId?.toString() && !isAdmin;
 
     useEffect(() => {
         selectedChatRef.current = selectedChat;
@@ -352,6 +354,22 @@ const Messages = () => {
         }
     };
 
+    const handleCall = async () => {
+        if (!rideId || !selectedChat) return;
+        try {
+            const res = await api.get(`/rides/${rideId}/contact`, { params: { userId: selectedChat } });
+            const phoneRaw = res?.data?.phoneNumber;
+            const phone = String(phoneRaw || '').replace(/[^\d+]/g, '');
+            if (!phone) {
+                toast.error('Phone number not available');
+                return;
+            }
+            window.location.href = `tel:${phone}`;
+        } catch (err) {
+            toast.error(err?.response?.data?.message || 'Unable to open dialer');
+        }
+    };
+
     return (
         <div className="h-[calc(100vh-12rem)] min-h-[500px] flex bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
             <div className={`${isMobile ? (mobileView === 'list' ? 'w-full flex' : 'hidden') : 'w-full md:w-80 flex'} border-r border-slate-100 flex-col`}>
@@ -425,6 +443,16 @@ const Messages = () => {
                             </div>
                         </div>
                     </div>
+                    {showCallButton ? (
+                        <button
+                            type="button"
+                            onClick={handleCall}
+                            className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-all"
+                            title="Call"
+                        >
+                            <FaPhone size={14} />
+                        </button>
+                    ) : null}
                 </header>
 
                 <div className="flex-1 p-6 overflow-y-auto bg-slate-50/50">
