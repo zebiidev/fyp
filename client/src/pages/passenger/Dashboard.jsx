@@ -35,7 +35,10 @@ const parseRideDateTime = (ride) => {
     return dateObj;
 };
 
-const getEtaLabel = (rideDateTime, isExpired) => {
+const getEtaLabel = (rideDateTime, status, isExpired) => {
+    const normalizedStatus = toLower(status);
+    if (normalizedStatus === 'completed') return 'Ride completed';
+    if (normalizedStatus === 'cancelled') return 'Ride cancelled';
     if (!rideDateTime) return 'ETA unavailable';
     if (isExpired) return 'Ride date has passed';
     const diffMs = rideDateTime.getTime() - Date.now();
@@ -408,7 +411,7 @@ const PassengerDashboard = () => {
                                     <div className={`flex items-center gap-4 p-4 rounded-2xl ${dashboardData.currentBooking.isExpired ? 'bg-rose-50' : 'bg-slate-50'}`}>
                                         <FaClock className={dashboardData.currentBooking.isExpired ? 'text-rose-400' : 'text-primary'} />
                                         <div>
-                                            <p className={`text-xs font-bold ${dashboardData.currentBooking.isExpired ? 'text-rose-600' : 'text-slate-800'}`}>{getEtaLabel(dashboardData.currentBooking.dateTime, dashboardData.currentBooking.isExpired)}</p>
+                                            <p className={`text-xs font-bold ${dashboardData.currentBooking.isExpired ? 'text-rose-600' : 'text-slate-800'}`}>{getEtaLabel(dashboardData.currentBooking.dateTime, dashboardData.currentBooking.status, dashboardData.currentBooking.isExpired)}</p>
                                             <p className="text-[10px] text-slate-400 uppercase font-bold">{formatDateTime(dashboardData.currentBooking.dateTime || dashboardData.currentBooking.date)}</p>
                                         </div>
                                     </div>
