@@ -92,7 +92,9 @@ const Messages = () => {
     const targetUserId = searchParams.get('userId');
     const targetUserName = searchParams.get('name') || 'User';
     const rideId = searchParams.get('rideId');
-    const showCallButton = Boolean(rideId) && Boolean(targetUserId) && selectedChat?.toString() === targetUserId?.toString() && !isAdmin;
+    const [callRideId, setCallRideId] = useState(rideId || null);
+    const [canCall, setCanCall] = useState(false);
+    const showCallButton = Boolean(callRideId) && Boolean(selectedChat) && !isAdmin;
 
     useEffect(() => {
         selectedChatRef.current = selectedChat;
@@ -194,6 +196,43 @@ const Messages = () => {
             dispatch(fetchChatHistory(selectedChat));
         }
     }, [dispatch, selectedChat]);
+
+    useEffect(() => {
+        const selectedId = selectedChat ? selectedChat.toString() : '';
+        const paramRideId = rideId || null;
+        if (paramRideId && selectedId) {
+            setCallRideId(paramRideId);
+            setCanCall(true);
+            return;
+        }
+
+        if (!token || !selectedId || isAdmin) {
+            setCallRideId(null);
+            setCanCall(false);
+            return;
+        }
+
+        let cancelled = false;
+        const load = async () => {
+            try {
+                const res = await api.get(`/rides/with/${encodeURIComponent(selectedId)}/latest`);
+                if (cancelled) return;
+                const nextRideId = res?.data?.rideId || null;
+                const nextCanCall = Boolean(res?.data?.canCall);
+                setCallRideId(nextRideId);
+                setCanCall(nextCanCall);
+            } catch {
+                if (cancelled) return;
+                setCallRideId(null);
+                setCanCall(false);
+            }
+        };
+        load();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [isAdmin, rideId, selectedChat, token]);
 
     useEffect(() => {
         const onResize = () => {
@@ -355,9 +394,13 @@ const Messages = () => {
     };
 
     const handleCall = async () => {
-        if (!rideId || !selectedChat) return;
+        if (!callRideId || !selectedChat) return;
+        if (!canCall) {
+            toast.error('Calling is available once the booking is accepted or the ride is active.');
+            return;
+        }
         try {
-            const res = await api.get(`/rides/${rideId}/contact`, { params: { userId: selectedChat } });
+            const res = await api.get(`/rides/${callRideId}/contact`, { params: { userId: selectedChat } });
             const phoneRaw = res?.data?.phoneNumber;
             const phone = String(phoneRaw || '').replace(/[^\d+]/g, '');
             if (!phone) {
@@ -443,7 +486,7 @@ const Messages = () => {
                             </div>
                         </div>
                     </div>
-                    {showCallButton ? (
+                    {showCallButton && canCall ? (
                         <button
                             type="button"
                             onClick={handleCall}

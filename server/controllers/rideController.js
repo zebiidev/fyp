@@ -496,6 +496,90 @@ export const getRideContact = async (req, res) => {
     }
 };
 
+// @desc    Get latest shared ride between current user and another user
+// @route   GET /api/rides/with/:userId/latest
+// @access  Private
+export const getLatestRideWithUser = async (req, res) => {
+    try {
+        const otherUserId = String(req.params.userId || '');
+        if (!otherUserId) {
+            return res.status(400).json({ message: 'userId is required' });
+        }
+
+        const requesterId = String(req.user.id);
+        if (otherUserId === requesterId) {
+            return res.status(400).json({ message: 'Invalid userId' });
+        }
+
+        const rides = await Ride.find({
+            $or: [
+                { driver: requesterId, 'passengers.user': otherUserId },
+                { driver: otherUserId, 'passengers.user': requesterId }
+            ]
+        })
+            .select('driver passengers status createdAt date time')
+            .sort({ createdAt: -1 })
+            .limit(25);
+
+        if (!rides || rides.length === 0) {
+            return res.json({ rideId: null, canCall: false });
+        }
+
+        const pickRide = (list) => {
+            let best = null;
+            let bestTs = -1;
+            list.forEach((ride) => {
+                const passengerEntry = (ride.passengers || []).find((p) => {
+                    const pid = p?.user?._id || p?.user;
+                    return String(pid) === requesterId || String(pid) === otherUserId;
+                });
+                const tsCandidate = passengerEntry?.requestedAt || ride.createdAt || ride.date;
+                const ts = tsCandidate ? new Date(tsCandidate).getTime() : 0;
+                const safeTs = Number.isFinite(ts) ? ts : 0;
+                if (safeTs > bestTs) {
+                    bestTs = safeTs;
+                    best = ride;
+                }
+            });
+            return best;
+        };
+
+        const latestRide = pickRide(rides);
+        if (!latestRide?._id) {
+            return res.json({ rideId: null, canCall: false });
+        }
+
+        const rideStatus = String(latestRide.status || '').toLowerCase();
+        const isRideActive = ['active', 'ongoing'].includes(rideStatus);
+        const driverId = String(latestRide.driver?._id || latestRide.driver);
+        const isRequesterDriver = driverId === requesterId;
+
+        if (!isRequesterDriver) {
+            const passengerEntry = (latestRide.passengers || []).find((p) => {
+                const pid = p?.user?._id || p?.user;
+                return String(pid) === requesterId;
+            });
+            const passengerStatus = String(passengerEntry?.status || '').toLowerCase();
+            if (passengerStatus === 'rejected') {
+                return res.json({ rideId: null, canCall: false });
+            }
+            const canCall = passengerStatus === 'accepted' || isRideActive;
+            return res.json({ rideId: String(latestRide._id), canCall });
+        }
+
+        const passengerEntry = (latestRide.passengers || []).find((p) => {
+            const pid = p?.user?._id || p?.user;
+            return String(pid) === otherUserId;
+        });
+        const passengerStatus = String(passengerEntry?.status || '').toLowerCase();
+        const canCall = passengerStatus === 'accepted' || isRideActive;
+        return res.json({ rideId: String(latestRide._id), canCall });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+};
+
 // @desc    Get rides for current user (as driver or passenger)
 // @route   GET /api/rides/my
 // @access  Private
