@@ -9,11 +9,13 @@ import {
     FaClock,
     FaCheckCircle,
     FaInfoCircle,
-    FaExclamationCircle
+    FaExclamationCircle,
+    FaPhone
 } from 'react-icons/fa';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchMyRides, rateRide } from '../../store/slices/rideSlice';
 import { toast } from 'react-toastify';
+import api from '../../utils/api';
 
 const toLower = (value) => (value || '').toString().toLowerCase();
 const normalizeId = (value) => (value ? value.toString() : '');
@@ -264,6 +266,22 @@ const PassengerDashboard = () => {
         }
     };
 
+    const handleCallDriver = async () => {
+        if (!dashboardData.currentBooking?.id) return;
+        try {
+            const res = await api.get(`/rides/${dashboardData.currentBooking.id}/contact`);
+            const phoneRaw = res?.data?.phoneNumber;
+            const phone = String(phoneRaw || '').replace(/[^\d+]/g, '');
+            if (!phone) {
+                toast.error('Phone number not available');
+                return;
+            }
+            window.location.href = `tel:${phone}`;
+        } catch (err) {
+            toast.error(err?.response?.data?.message || 'Unable to open dialer');
+        }
+    };
+
     return (
         <div className="space-y-8">
             {isProfileIncomplete ? (
@@ -456,6 +474,15 @@ const PassengerDashboard = () => {
                                             >
                                                 Open Chat
                                             </Link>
+                                            {['active', 'ongoing', 'accepted'].includes(toLower(dashboardData.currentBooking.status)) || ['active', 'ongoing'].includes(toLower(dashboardData.currentBooking.rideStatus)) ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={handleCallDriver}
+                                                    className="flex items-center justify-center gap-2 w-full bg-emerald-50 text-emerald-700 py-2 rounded-xl text-xs font-bold hover:bg-emerald-600 hover:text-white transition-all"
+                                                >
+                                                    <FaPhone size={12} /> Call
+                                                </button>
+                                            ) : null}
                                         </div>
                                     </div>
                                 </div>

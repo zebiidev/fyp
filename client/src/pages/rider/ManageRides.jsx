@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FaCar, FaUsers, FaCheck, FaTimes, FaComments, FaHistory } from 'react-icons/fa';
+import { FaCar, FaUsers, FaCheck, FaTimes, FaComments, FaHistory, FaPhone } from 'react-icons/fa';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import { fetchMyRides, updatePassengerStatus, updateRideStatus } from '../../store/slices/rideSlice';
 import Loader from '../../components/ui/Loader';
 import { toast } from 'react-toastify';
 import { getSocket } from '../../utils/socket';
+import api from '../../utils/api';
 
 const RideCard = ({ ride, onAction, onStatusChange, onToggleTracking, isTracking, processingRequestId, processingRideId, processingStatusId }) => {
     const acceptedCount = (ride.passengers || []).filter(p => p.status === 'accepted').length;
@@ -13,6 +14,22 @@ const RideCard = ({ ride, onAction, onStatusChange, onToggleTracking, isTracking
     const canStart = ride.status === 'scheduled' && acceptedCount > 0;
     const canComplete = ride.status === 'active';
     const canTrack = ride.status === 'active';
+
+    const handleCallPassenger = async (userId) => {
+        if (!ride?._id || !userId) return;
+        try {
+            const res = await api.get(`/rides/${ride._id}/contact`, { params: { userId } });
+            const phoneRaw = res?.data?.phoneNumber;
+            const phone = String(phoneRaw || '').replace(/[^\d+]/g, '');
+            if (!phone) {
+                toast.error('Phone number not available');
+                return;
+            }
+            window.location.href = `tel:${phone}`;
+        } catch (err) {
+            toast.error(err?.response?.data?.message || 'Unable to open dialer');
+        }
+    };
 
     return (
     <div className="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden group">
@@ -109,13 +126,23 @@ const RideCard = ({ ride, onAction, onStatusChange, onToggleTracking, isTracking
                             </div>
                             <div className="flex flex-wrap gap-2">
                                 {req.status === 'accepted' ? (
-                                    <Link
-                                        to={`/rider/messages?userId=${req.user?._id}&name=${encodeURIComponent(req.user?.name)}`}
-                                        className="p-2.5 bg-indigo-50 text-primary rounded-xl hover:bg-primary hover:text-white transition-all"
-                                        title="Chat"
-                                    >
-                                        <FaComments size={14} />
-                                    </Link>
+                                    <>
+                                        <Link
+                                            to={`/rider/messages?userId=${req.user?._id}&name=${encodeURIComponent(req.user?.name)}`}
+                                            className="p-2.5 bg-indigo-50 text-primary rounded-xl hover:bg-primary hover:text-white transition-all"
+                                            title="Chat"
+                                        >
+                                            <FaComments size={14} />
+                                        </Link>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleCallPassenger(req.user?._id)}
+                                            className="p-2.5 bg-emerald-50 text-emerald-700 rounded-xl hover:bg-emerald-600 hover:text-white transition-all"
+                                            title="Call"
+                                        >
+                                            <FaPhone size={14} />
+                                        </button>
+                                    </>
                                 ) : req.status === 'pending' ? (
                                     <>
                                         <button 

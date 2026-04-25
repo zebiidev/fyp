@@ -406,6 +406,96 @@ export const getRideById = async (req, res) => {
     }
 };
 
+// @desc    Get contact (phone number) for ride participant
+// @route   GET /api/rides/:id/contact
+// @access  Private
+export const getRideContact = async (req, res) => {
+    try {
+        const ride = await Ride.findById(req.params.id)
+            .select('driver passengers status')
+            .populate('driver', 'name phoneNumber')
+            .populate('passengers.user', 'name phoneNumber');
+
+        if (!ride) {
+            return res.status(404).json({ message: 'Ride not found' });
+        }
+
+        const requesterId = String(req.user.id);
+        const driverId = String(ride.driver?._id || ride.driver);
+        const rideStatus = String(ride.status || '').toLowerCase();
+
+        const passengerEntry = (ride.passengers || []).find((p) => {
+            const pid = p?.user?._id || p?.user;
+            return String(pid) === requesterId;
+        });
+
+        const isDriver = driverId === requesterId;
+        if (!isDriver && !passengerEntry) {
+            return res.status(403).json({ message: 'Not authorized to view ride contact' });
+        }
+
+        const isRideActive = ['active', 'ongoing'].includes(rideStatus);
+
+        // Passenger -> Driver contact
+        if (!isDriver) {
+            const passengerStatus = String(passengerEntry?.status || '').toLowerCase();
+            if (passengerStatus === 'rejected') {
+                return res.status(403).json({ message: 'Not authorized to view ride contact' });
+            }
+            const isAccepted = passengerStatus === 'accepted';
+            if (!isAccepted && !isRideActive) {
+                return res.status(403).json({ message: 'Contact is available once your booking is accepted or the ride is active.' });
+            }
+
+            const driver = ride.driver;
+            if (!driver?.phoneNumber) {
+                return res.status(404).json({ message: 'Driver phone number not available' });
+            }
+
+            return res.json({
+                userId: driver._id,
+                name: driver.name,
+                phoneNumber: driver.phoneNumber
+            });
+        }
+
+        // Driver -> Passenger contact (requires userId query param)
+        const targetUserId = req.query.userId || req.query.passengerId;
+        if (!targetUserId) {
+            return res.status(400).json({ message: 'userId is required' });
+        }
+
+        const targetEntry = (ride.passengers || []).find((p) => {
+            const pid = p?.user?._id || p?.user;
+            return String(pid) === String(targetUserId);
+        });
+
+        if (!targetEntry) {
+            return res.status(404).json({ message: 'Passenger not found for this ride' });
+        }
+
+        const targetStatus = String(targetEntry?.status || '').toLowerCase();
+        const isAccepted = targetStatus === 'accepted';
+        if (!isAccepted && !isRideActive) {
+            return res.status(403).json({ message: 'Contact is available once the booking is accepted or the ride is active.' });
+        }
+
+        const passenger = targetEntry.user;
+        if (!passenger?.phoneNumber) {
+            return res.status(404).json({ message: 'Passenger phone number not available' });
+        }
+
+        return res.json({
+            userId: passenger._id,
+            name: passenger.name,
+            phoneNumber: passenger.phoneNumber
+        });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+};
+
 // @desc    Get rides for current user (as driver or passenger)
 // @route   GET /api/rides/my
 // @access  Private

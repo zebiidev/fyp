@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { FaCar, FaClock, FaMapMarkerAlt, FaChevronRight, FaComments } from 'react-icons/fa';
+import { FaCar, FaClock, FaMapMarkerAlt, FaChevronRight, FaComments, FaPhone } from 'react-icons/fa';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import { fetchMyRides } from '../../store/slices/rideSlice';
+import api from '../../utils/api';
+import { toast } from 'react-toastify';
 
 const BookingCard = ({ booking }) => {
     const statusColors = {
@@ -14,6 +16,23 @@ const BookingCard = ({ booking }) => {
         cancelled: 'bg-rose-50 text-rose-600'
     };
     const canTrack = ['active', 'ongoing'].includes((booking.rideStatus || '').toLowerCase());
+    const canCall = ['accepted'].includes((booking.passengerStatus || '').toLowerCase()) || canTrack;
+
+    const handleCall = async () => {
+        if (!booking?.id) return;
+        try {
+            const res = await api.get(`/rides/${booking.id}/contact`);
+            const phoneRaw = res?.data?.phoneNumber;
+            const phone = String(phoneRaw || '').replace(/[^\d+]/g, '');
+            if (!phone) {
+                toast.error('Phone number not available');
+                return;
+            }
+            window.location.href = `tel:${phone}`;
+        } catch (err) {
+            toast.error(err?.response?.data?.message || 'Unable to open dialer');
+        }
+    };
 
     return (
         <motion.div
@@ -52,6 +71,15 @@ const BookingCard = ({ booking }) => {
                         >
                             Track Ride
                         </Link>
+                    ) : null}
+                    {canCall ? (
+                        <button
+                            type="button"
+                            onClick={handleCall}
+                            className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-indigo-700 bg-indigo-50 px-3 py-1.5 rounded-full hover:bg-primary hover:text-white transition-all"
+                        >
+                            <FaPhone size={10} /> Call
+                        </button>
                     ) : null}
                     {booking.chatUserId ? (
                         <Link
