@@ -13,6 +13,7 @@ const BookingCard = ({ booking }) => {
         completed: 'bg-slate-100 text-slate-500',
         cancelled: 'bg-rose-50 text-rose-600'
     };
+    const canTrack = ['active', 'ongoing'].includes((booking.rideStatus || '').toLowerCase());
 
     return (
         <motion.div
@@ -43,14 +44,24 @@ const BookingCard = ({ booking }) => {
             <div className="text-left sm:text-right sm:ml-auto">
                 <p className="text-sm font-bold text-slate-800">Rs. {booking.price}</p>
                 <p className="text-[10px] text-slate-400 font-bold">Payment: Cash</p>
-                {booking.chatUserId ? (
-                    <Link
-                        to={`/passenger/messages?userId=${encodeURIComponent(booking.chatUserId)}&name=${encodeURIComponent(booking.chatUserName || 'Rider')}`}
-                        className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold text-primary"
-                    >
-                        <FaComments size={10} /> Chat
-                    </Link>
-                ) : null}
+                <div className="mt-2 flex flex-wrap gap-3 justify-start sm:justify-end">
+                    {canTrack ? (
+                        <Link
+                            to={`/passenger/track/${booking.id}`}
+                            className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full hover:bg-emerald-600 hover:text-white transition-all"
+                        >
+                            Track Ride
+                        </Link>
+                    ) : null}
+                    {booking.chatUserId ? (
+                        <Link
+                            to={`/passenger/messages?userId=${encodeURIComponent(booking.chatUserId)}&name=${encodeURIComponent(booking.chatUserName || 'Rider')}`}
+                            className="inline-flex items-center gap-1 text-[10px] font-bold text-primary"
+                        >
+                            <FaComments size={10} /> Chat
+                        </Link>
+                    ) : null}
+                </div>
             </div>
 
             <FaChevronRight className="hidden sm:block text-slate-200 group-hover:text-primary transition-colors" />

@@ -11,6 +11,10 @@ const rideSchema = new mongoose.Schema({
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User'
         },
+        requestedAt: {
+            type: Date,
+            default: Date.now
+        },
         status: {
             type: String,
             enum: ['pending', 'accepted', 'rejected'],

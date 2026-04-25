@@ -295,6 +295,7 @@ export const requestRide = async (req, res) => {
         // Add passenger
         ride.passengers.push({
             user: req.user.id,
+            requestedAt: new Date(),
             status: 'pending', // Or 'accepted' if auto-approve
             seatsBooked: 1
         });

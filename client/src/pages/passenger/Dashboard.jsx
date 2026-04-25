@@ -125,6 +125,9 @@ const PassengerDashboard = () => {
             const passengerStatus = toLower(passengerEntry?.status);
             const rideStatus = toLower(ride.status);
             const rideDateTime = parseRideDateTime(ride);
+            const requestedAtValue = passengerEntry?.requestedAt || ride?.createdAt || null;
+            const requestedAtCandidateMs = requestedAtValue ? new Date(requestedAtValue).getTime() : 0;
+            const requestedAtMs = Number.isFinite(requestedAtCandidateMs) ? requestedAtCandidateMs : 0;
             // A ride is expired if its date+time is more than 2 hours past
             // and was never marked completed/cancelled.
             const TWO_HOURS = 2 * 60 * 60 * 1000;
@@ -144,6 +147,7 @@ const PassengerDashboard = () => {
                 time: ride.time,
                 date: ride.date,
                 dateTime: rideDateTime,
+                requestedAtMs,
                 status: effectiveStatus,
                 rideStatus,
                 isExpired: Boolean(isExpired),
@@ -179,9 +183,23 @@ const PassengerDashboard = () => {
         const lastUnrated = completed
             .filter((ride) => !ride.passengerRating && !ride.isExpired)
             .sort((a, b) => (b.dateTime?.getTime() || 0) - (a.dateTime?.getTime() || 0))[0] || null;
-        const futureUpcoming = upcoming.filter((ride) => Number.isFinite(ride.dateTime?.getTime()) && ride.dateTime.getTime() >= nowMs);
-        // Only show genuinely current/future rides as Current Booking
-        const currentBooking = futureUpcoming[0] || (upcoming.length > 0 ? upcoming[0] : null);
+        const activeRide = mappedRides
+            .filter((ride) => ['active', 'ongoing'].includes(toLower(ride.rideStatus)) && !ride.isExpired)
+            .sort((a, b) => (b.dateTime?.getTime() || 0) - (a.dateTime?.getTime() || 0))[0] || null;
+        const latestUpcomingBooking = upcoming
+            .slice()
+            .sort((a, b) => {
+                if ((b.requestedAtMs || 0) !== (a.requestedAtMs || 0)) return (b.requestedAtMs || 0) - (a.requestedAtMs || 0);
+                return (b.dateTime?.getTime() || 0) - (a.dateTime?.getTime() || 0);
+            })[0] || null;
+        const latestBookingOverall = mappedRides
+            .slice()
+            .sort((a, b) => {
+                if ((b.requestedAtMs || 0) !== (a.requestedAtMs || 0)) return (b.requestedAtMs || 0) - (a.requestedAtMs || 0);
+                return (b.dateTime?.getTime() || 0) - (a.dateTime?.getTime() || 0);
+            })[0] || null;
+        // Prefer an active/ongoing ride for tracking; otherwise show the latest booking request.
+        const currentBooking = activeRide || latestUpcomingBooking || latestBookingOverall;
         const avgRating = completed.length > 0
             ? (completed.reduce((sum, ride) => sum + (ride.driver.rating || 0), 0) / completed.length).toFixed(1)
             : 'N/A';
