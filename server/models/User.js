@@ -130,6 +130,11 @@ const userSchema = new mongoose.Schema({
     }
 });
 
+// Speeds up: admin user directory filters and role/status breakdowns.
+userSchema.index({ role: 1, accountStatus: 1, createdAt: -1 });
+userSchema.index({ registrationNumber: 1 });
+userSchema.index({ isBlocked: 1, createdAt: -1 });
+
 // Compare password method - Keep this for login
 userSchema.methods.comparePassword = async function (candidatePassword) {
     return await bcrypt.compare(candidatePassword, this.password);

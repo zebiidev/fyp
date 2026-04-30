@@ -3,6 +3,7 @@ dotenv.config();
 import express from 'express';
 import cors from 'cors';
 import connectDB from './config/db.js';
+import compression from 'compression';
 
 // Import Routes
 import authRoutes from './routes/auth.js';
@@ -61,6 +62,7 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors({ origin: allowedOrigins }));
+app.use(compression());
 app.use(express.json());
 
 // Database Connection
@@ -68,6 +70,9 @@ connectDB();
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.get('/api/health', (req, res) => {
+    res.json({ ok: true, ts: new Date().toISOString() });
+});
 app.use('/api/complaints', complaintRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/rides', rideRoutes);
@@ -80,12 +85,26 @@ app.use('/api/sos', sosRoutes);
 let onlineUsers = new Map(); // userId -> socketId
 const liveRideLocations = new Map(); // rideId -> { lat, lng, updatedAt, publisherId }
 const socketPublishedRides = new Map(); // socketId -> Set<rideId>
+const rideTrackingAccessCache = new Map(); // `${userId}:${rideId}` -> { isDriver, isAcceptedPassenger, status, expiresAt }
+
+const ACCESS_CACHE_TTL_MS = 15_000;
 
 const normalizeRideId = (value) => String(value || '').trim();
 
 const getRideTrackingAccess = async (rideId, userId) => {
     const normalizedRideId = normalizeRideId(rideId);
     if (!normalizedRideId || !userId) return null;
+
+    const cacheKey = `${userId}:${normalizedRideId}`;
+    const cached = rideTrackingAccessCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+        return {
+            ride: { status: cached.status, driver: cached.isDriver ? userId : undefined, passengers: [] },
+            rideId: normalizedRideId,
+            isDriver: cached.isDriver,
+            isAcceptedPassenger: cached.isAcceptedPassenger
+        };
+    }
 
     const ride = await Ride.findById(normalizedRideId).select('driver passengers status');
     if (!ride) return null;
@@ -94,6 +113,13 @@ const getRideTrackingAccess = async (rideId, userId) => {
     const isAcceptedPassenger = (ride.passengers || []).some(
         (passenger) => String(passenger.user) === String(userId) && passenger.status === 'accepted'
     );
+
+    rideTrackingAccessCache.set(cacheKey, {
+        isDriver,
+        isAcceptedPassenger,
+        status: ride.status,
+        expiresAt: Date.now() + ACCESS_CACHE_TTL_MS
+    });
 
     return {
         ride,
@@ -112,6 +138,8 @@ const clearPublishedRide = (rideId) => {
 };
 
 io.on('connection', (socket) => {
+    socket.data.authorizedRideViews = new Set(); // rideIds user can view
+    socket.data.authorizedRidePublishes = new Set(); // rideIds driver can publish
 
     // User joins after token auth
     socket.on('join_chat', () => {
@@ -176,6 +204,9 @@ io.on('connection', (socket) => {
                     return;
                 }
 
+                socket.data.authorizedRideViews.add(rideId);
+                if (access.isDriver) socket.data.authorizedRidePublishes.add(rideId);
+
                 socket.join(`ride:${rideId}`);
 
                 const lastKnownLocation = liveRideLocations.get(rideId);
@@ -198,6 +229,8 @@ io.on('connection', (socket) => {
         const rideId = normalizeRideId(payload?.rideId);
         if (rideId) {
             socket.leave(`ride:${rideId}`);
+            socket.data.authorizedRideViews.delete(rideId);
+            socket.data.authorizedRidePublishes.delete(rideId);
         }
     });
 
@@ -231,10 +264,14 @@ io.on('connection', (socket) => {
         if (!rideId || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
 
         try {
-            const access = await getRideTrackingAccess(rideId, socket.userId);
-            if (!access?.isDriver || access.ride.status !== 'active') {
-                socket.emit('tracking_error', { rideId, message: 'Not authorized to publish ride location.' });
-                return;
+            // Fast-path: if this socket already joined as driver, skip DB checks.
+            if (!socket.data.authorizedRidePublishes.has(rideId)) {
+                const access = await getRideTrackingAccess(rideId, socket.userId);
+                if (!access?.isDriver || access.ride.status !== 'active') {
+                    socket.emit('tracking_error', { rideId, message: 'Not authorized to publish ride location.' });
+                    return;
+                }
+                socket.data.authorizedRidePublishes.add(rideId);
             }
 
             liveRideLocations.set(rideId, {

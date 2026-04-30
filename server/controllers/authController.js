@@ -74,30 +74,30 @@ const generateToken = (id) => {
 // @access  Public
 export const register = async (req, res) => {
     const { name, email, password, role, registrationNumber } = req.body;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
     const normalizedReg = registrationNumber ? registrationNumber.toString().trim().toUpperCase() : '';
 
     try {
-        let user = await User.findOne({ email });
+        const orClauses = [{ email: normalizedEmail }];
+        if (normalizedReg) orClauses.push({ registrationNumber: normalizedReg });
 
-        if (user) {
-            return res.status(400).json({ message: 'User already exists' });
-        }
-
-        // Check if registration number is already used
-        if (normalizedReg) {
-            const regExists = await User.findOne({ registrationNumber: normalizedReg });
-            if (regExists) {
+        const existing = await User.findOne({ $or: orClauses }).select('email registrationNumber');
+        if (existing) {
+            if (existing.email === normalizedEmail) {
+                return res.status(400).json({ message: 'User already exists' });
+            }
+            if (normalizedReg && existing.registrationNumber === normalizedReg) {
                 return res.status(400).json({ message: 'Registration number already registered' });
             }
+            return res.status(400).json({ message: 'Account already exists' });
         }
 
-        // Manual Hashing before creation
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
+        const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS || 10);
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-        user = await User.create({
+        const user = await User.create({
             name,
-            email,
+            email: normalizedEmail,
             password: hashedPassword,
             role,
             registrationNumber: normalizedReg,
@@ -133,8 +133,9 @@ export const login = async (req, res) => {
     const { email, password } = req.body;
 
     try {
+        const normalizedEmail = String(email || '').trim().toLowerCase();
         // Check for user
-        const user = await User.findOne({ email });
+        const user = await User.findOne({ email: normalizedEmail }).select('password role accountStatus isBlocked name email');
 
         if (!user) {
             return res.status(400).json({ message: 'Invalid credentials' });

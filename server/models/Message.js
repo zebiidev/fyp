@@ -34,6 +34,10 @@ const messageSchema = new mongoose.Schema({
     }
 });
 
+// Speeds up: chat history, conversations list, and unread checks.
+messageSchema.index({ sender: 1, recipient: 1, createdAt: -1 });
+messageSchema.index({ recipient: 1, read: 1, createdAt: -1 });
+
 messageSchema.pre('validate', function () {
     const hasText = typeof this.text === 'string' && this.text.trim().length > 0;
     const hasImage = typeof this.imageUrl === 'string' && this.imageUrl.trim().length > 0;

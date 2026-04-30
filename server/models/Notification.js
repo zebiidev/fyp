@@ -46,5 +46,8 @@ const NotificationSchema = new mongoose.Schema({
     }
 });
 
+// Speeds up: notifications list and unread counts.
+NotificationSchema.index({ recipient: 1, read: 1, createdAt: -1 });
+
 const Notification = mongoose.model('Notification', NotificationSchema);
 export default Notification;

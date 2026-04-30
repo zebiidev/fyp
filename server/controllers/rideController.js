@@ -187,12 +187,15 @@ export const createRide = async (req, res) => {
 // @access  Private
 export const searchRides = async (req, res) => {
     try {
-        const { from, to, date, useProfileArea } = req.query;
+        const { from, to, date, useProfileArea, riderGender } = req.query;
         const trimmedFrom = String(from || '').trim();
         const trimmedTo = String(to || '').trim();
         const shouldUseProfileArea = useProfileArea === 'true';
         const profileArea = shouldUseProfileArea ? String(req.user.address || '').trim() : '';
         const effectiveFrom = trimmedFrom || profileArea;
+        const normalizedGender = String(riderGender || '').trim().toLowerCase();
+        const allowedGenders = new Set(['male', 'female', 'other']);
+        const genderFilter = allowedGenders.has(normalizedGender) ? normalizedGender : '';
 
         const baseQuery = {
             status: 'scheduled',
@@ -222,24 +225,45 @@ export const searchRides = async (req, res) => {
             query.date = baseQuery.date;
         }
 
+        const rideSelect = 'driver pickupLocation dropoffLocation date time seatsAvailable pricePerSeat vehicle status createdAt passengers';
+
         let rides = await Ride.find(query)
-            .populate('driver', 'name avatar averageRating totalRatings vehicleDetails gender')
-            .sort({ date: 1, time: 1 });
+            .select(rideSelect)
+            .sort({ date: 1, time: 1 })
+            .limit(200)
+            .lean();
 
         if (rides.length === 0 && (effectiveFrom || trimmedTo)) {
-            const fallbackRides = await Ride.find(baseQuery)
-                .populate('driver', 'name avatar averageRating totalRatings vehicleDetails gender')
-                .sort({ date: 1, time: 1 });
+            // Fallback: pull a smaller candidate set then do fuzzy matching in JS (still fast).
+            // Avoid populating drivers for the whole base set.
+            const candidates = await Ride.find(baseQuery)
+                .select(rideSelect)
+                .sort({ date: 1, time: 1 })
+                .limit(400)
+                .lean();
 
-            rides = fallbackRides.filter((ride) => {
+            rides = candidates.filter((ride) => {
                 if (effectiveFrom && !isFuzzyMatch(effectiveFrom, ride.pickupLocation)) return false;
                 if (trimmedTo && !isFuzzyMatch(trimmedTo, ride.dropoffLocation)) return false;
                 return true;
             });
         }
 
+        // Populate driver details only for rides we will return.
+        const driverIds = [...new Set(rides.map((r) => String(r.driver)).filter(Boolean))];
+        const driverQuery = { _id: { $in: driverIds } };
+        if (genderFilter) driverQuery.gender = genderFilter;
+
+        const drivers = await User.find(driverQuery)
+            .select('name avatar averageRating totalRatings vehicleDetails gender')
+            .lean();
+        const driverById = new Map(drivers.map((d) => [String(d._id), d]));
+
         const ridesWithMatchMetadata = rides
             .map((ride) => {
+                const driver = driverById.get(String(ride.driver));
+                if (genderFilter && !driver) return null;
+
                 const match = scoreRideMatch({
                     ride,
                     from: trimmedFrom,
@@ -248,11 +272,13 @@ export const searchRides = async (req, res) => {
                 });
 
                 return {
-                    ...ride.toObject(),
+                    ...ride,
+                    driver: driver || ride.driver,
                     matchScore: match.score,
                     matchReasons: match.reasons
                 };
             })
+            .filter(Boolean)
             .sort((a, b) => {
                 if (b.matchScore !== a.matchScore) return b.matchScore - a.matchScore;
                 const aDate = new Date(`${a.date} ${a.time || '00:00'}`).getTime() || 0;

@@ -1,5 +1,6 @@
 import Message from '../models/Message.js';
 import User from '../models/User.js';
+import mongoose from 'mongoose';
 
 // @desc    Get chat history with a specific user
 // @route   GET /api/chat/:userId
@@ -30,37 +31,58 @@ export const getConversations = async (req, res) => {
     try {
         const myId = req.user.id;
 
-        // Find all messages where user is sender or recipient
-        const messages = await Message.find({
-            $or: [{ sender: myId }, { recipient: myId }]
-        }).sort({ createdAt: -1 });
+        const myObjectId = new mongoose.Types.ObjectId(myId);
 
-        // Extract unique user IDs
-        const userIds = new Set();
-        messages.forEach(msg => {
-            if (msg.sender.toString() !== myId) userIds.add(msg.sender.toString());
-            if (msg.recipient.toString() !== myId) userIds.add(msg.recipient.toString());
-        });
+        // Use an aggregation pipeline to avoid loading all messages into memory.
+        // Returns latest message per conversation partner.
+        const latestPerUser = await Message.aggregate([
+            {
+                $match: {
+                    $or: [{ sender: myObjectId }, { recipient: myObjectId }]
+                }
+            },
+            {
+                $addFields: {
+                    otherUser: {
+                        $cond: [{ $eq: ['$sender', myObjectId] }, '$recipient', '$sender']
+                    }
+                }
+            },
+            { $sort: { createdAt: -1 } },
+            {
+                $group: {
+                    _id: '$otherUser',
+                    lastMessage: { $first: '$$ROOT' }
+                }
+            },
+            { $sort: { 'lastMessage.createdAt': -1 } },
+            { $limit: 50 }
+        ]);
 
-        // Get user details
-        const users = await User.find({ _id: { $in: Array.from(userIds) } }).select('name email role avatar');
+        const userIds = latestPerUser.map((row) => row._id);
+        const users = await User.find({ _id: { $in: userIds } })
+            .select('name email role avatar')
+            .lean();
 
-        // Map users to conversation format (add last message info if needed)
-        const conversations = users.map(user => {
-            const lastMsg = messages.find(m =>
-                (m.sender.toString() === user._id.toString() && m.recipient.toString() === myId) ||
-                (m.sender.toString() === myId && m.recipient.toString() === user._id.toString())
-            );
+        const userById = new Map(users.map((u) => [String(u._id), u]));
 
-            return {
-                user,
-                lastMessage: lastMsg
-                    ? (lastMsg.messageType === 'image' ? '[Image]' : (lastMsg.text || ''))
-                    : '',
-                time: lastMsg ? lastMsg.createdAt : null,
-                unread: 0 // logic for unread count can be added later
-            };
-        });
+        const conversations = latestPerUser
+            .map((row) => {
+                const user = userById.get(String(row._id));
+                if (!user) return null;
+
+                const msg = row.lastMessage || {};
+                const lastMessage =
+                    msg.messageType === 'image' ? '[Image]' : (typeof msg.text === 'string' ? msg.text : '');
+
+                return {
+                    user,
+                    lastMessage,
+                    time: msg.createdAt || null,
+                    unread: 0
+                };
+            })
+            .filter(Boolean);
 
         res.json(conversations);
     } catch (err) {

@@ -78,6 +78,12 @@ const rideSchema = new mongoose.Schema({
     }
 });
 
+// Common query patterns: searching scheduled rides, rider dashboards, and passenger membership checks.
+rideSchema.index({ status: 1, date: 1 });
+rideSchema.index({ driver: 1, status: 1, date: -1 });
+rideSchema.index({ pickupLocation: 1, dropoffLocation: 1, date: 1 });
+rideSchema.index({ 'passengers.user': 1, status: 1, date: -1 });
+
 const Ride = mongoose.model('Ride', rideSchema);
 
 export default Ride;

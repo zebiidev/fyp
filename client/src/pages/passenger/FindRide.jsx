@@ -242,7 +242,13 @@ const FindRide = () => {
             toast.info(canUseProfileArea ? 'Enter search details or use your saved area.' : 'Enter at least one search field before searching.');
             return;
         }
-        const result = await dispatch(searchRides({ from, to, date, useProfileArea: usedProfileArea && !fromValue }));
+        const result = await dispatch(searchRides({
+            from,
+            to,
+            date,
+            useProfileArea: usedProfileArea && !fromValue,
+            riderGender: filters.gender
+        }));
         if (searchRides.rejected.match(result)) {
             toast.error(result.payload || 'Could not fetch rides.');
         } else if (result.payload?.length === 0) {

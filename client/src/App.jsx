@@ -38,10 +38,15 @@ import DashboardLayout from "./components/layout/DashboardLayout";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import RootRedirect from "./components/auth/RootRedirect";
 import { loadUser } from "./store/slices/authSlice";
+import api from "./utils/api";
 
 function App() {
   const dispatch = useDispatch();
   const token = useSelector((state) => state.auth.token);
+
+  useEffect(() => {
+    api.get("/health", { timeout: 8000 }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (token) {
@@ -68,277 +73,277 @@ function App() {
         theme="colored"
       />
       <Router>
-          <Routes>
-            <Route path="/" element={<RootRedirect />} />
-            <Route path="/home" element={<Home />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/pending-approval" element={<PendingApproval />} />
+        <Routes>
+          <Route path="/" element={<RootRedirect />} />
+          <Route path="/home" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/pending-approval" element={<PendingApproval />} />
 
-            {/* Passenger Dashboard Routes */}
-            <Route
-              path="/passenger/dashboard"
-              element={
-                <ProtectedRoute allowedRoles={["passenger"]}>
-                  {wrapWithLayout(<PassengerDashboard />)}
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/passenger/area-riders"
-              element={
-                <ProtectedRoute allowedRoles={["passenger"]}>
-                  {wrapWithLayout(<AreaRiders />)}
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/passenger/find"
-              element={
-                <ProtectedRoute allowedRoles={["passenger"]}>
-                  {wrapWithLayout(<FindRide />)}
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/passenger/bookings"
-              element={
-                <ProtectedRoute allowedRoles={["passenger"]}>
-                  {wrapWithLayout(<MyBookings />)}
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/passenger/track/:rideId"
-              element={
-                <ProtectedRoute allowedRoles={["passenger"]}>
-                  {wrapWithLayout(<TrackRide />)}
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/passenger/messages"
-              element={
-                <ProtectedRoute allowedRoles={["passenger"]}>
-                  {wrapWithLayout(<Messages />)}
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/passenger/history"
-              element={
-                <ProtectedRoute allowedRoles={["passenger"]}>
-                  {wrapWithLayout(<RideHistory />)}
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/passenger/sos"
-              element={
-                <ProtectedRoute allowedRoles={["passenger"]}>
-                  {wrapWithLayout(<EmergencySOS />)}
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/passenger/complaints"
-              element={
-                <ProtectedRoute allowedRoles={["passenger"]}>
-                  {wrapWithLayout(<Complaint />)}
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/passenger/settings"
-              element={
-                <ProtectedRoute allowedRoles={["passenger"]}>
-                  {wrapWithLayout(<Settings />)}
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/passenger/profile/complete"
-              element={
-                <ProtectedRoute allowedRoles={["passenger"]}>
-                  {wrapWithLayout(<CompleteProfile />)}
-                </ProtectedRoute>
-              }
-            />
+          {/* Passenger Dashboard Routes */}
+          <Route
+            path="/passenger/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={["passenger"]}>
+                {wrapWithLayout(<PassengerDashboard />)}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/passenger/area-riders"
+            element={
+              <ProtectedRoute allowedRoles={["passenger"]}>
+                {wrapWithLayout(<AreaRiders />)}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/passenger/find"
+            element={
+              <ProtectedRoute allowedRoles={["passenger"]}>
+                {wrapWithLayout(<FindRide />)}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/passenger/bookings"
+            element={
+              <ProtectedRoute allowedRoles={["passenger"]}>
+                {wrapWithLayout(<MyBookings />)}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/passenger/track/:rideId"
+            element={
+              <ProtectedRoute allowedRoles={["passenger"]}>
+                {wrapWithLayout(<TrackRide />)}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/passenger/messages"
+            element={
+              <ProtectedRoute allowedRoles={["passenger"]}>
+                {wrapWithLayout(<Messages />)}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/passenger/history"
+            element={
+              <ProtectedRoute allowedRoles={["passenger"]}>
+                {wrapWithLayout(<RideHistory />)}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/passenger/sos"
+            element={
+              <ProtectedRoute allowedRoles={["passenger"]}>
+                {wrapWithLayout(<EmergencySOS />)}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/passenger/complaints"
+            element={
+              <ProtectedRoute allowedRoles={["passenger"]}>
+                {wrapWithLayout(<Complaint />)}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/passenger/settings"
+            element={
+              <ProtectedRoute allowedRoles={["passenger"]}>
+                {wrapWithLayout(<Settings />)}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/passenger/profile/complete"
+            element={
+              <ProtectedRoute allowedRoles={["passenger"]}>
+                {wrapWithLayout(<CompleteProfile />)}
+              </ProtectedRoute>
+            }
+          />
 
-            {/* Rider Dashboard Routes */}
-            <Route
-              path="/rider/dashboard"
-              element={
-                <ProtectedRoute allowedRoles={["rider"]}>
-                  {wrapWithLayout(<RiderDashboard />)}
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/rider/offer"
-              element={
-                <ProtectedRoute allowedRoles={["rider"]}>
-                  {wrapWithLayout(<OfferRide />)}
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/rider/manage"
-              element={
-                <ProtectedRoute allowedRoles={["rider"]}>
-                  {wrapWithLayout(<ManageRides />)}
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/rider/vehicles"
-              element={
-                <ProtectedRoute allowedRoles={["rider"]}>
-                  {wrapWithLayout(<VehicleManagement />)}
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/rider/vehicles/edit"
-              element={
-                <ProtectedRoute allowedRoles={["rider"]}>
-                  {wrapWithLayout(<EditVehicle />)}
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/rider/profile/complete"
-              element={
-                <ProtectedRoute allowedRoles={["rider"]}>
-                  {wrapWithLayout(<CompleteRiderProfile />)}
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/rider/vehicle/complete"
-              element={
-                <ProtectedRoute allowedRoles={["rider"]}>
-                  {wrapWithLayout(<VehicleCompletion />)}
-                </ProtectedRoute>
-              }
-            />
+          {/* Rider Dashboard Routes */}
+          <Route
+            path="/rider/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={["rider"]}>
+                {wrapWithLayout(<RiderDashboard />)}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/rider/offer"
+            element={
+              <ProtectedRoute allowedRoles={["rider"]}>
+                {wrapWithLayout(<OfferRide />)}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/rider/manage"
+            element={
+              <ProtectedRoute allowedRoles={["rider"]}>
+                {wrapWithLayout(<ManageRides />)}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/rider/vehicles"
+            element={
+              <ProtectedRoute allowedRoles={["rider"]}>
+                {wrapWithLayout(<VehicleManagement />)}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/rider/vehicles/edit"
+            element={
+              <ProtectedRoute allowedRoles={["rider"]}>
+                {wrapWithLayout(<EditVehicle />)}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/rider/profile/complete"
+            element={
+              <ProtectedRoute allowedRoles={["rider"]}>
+                {wrapWithLayout(<CompleteRiderProfile />)}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/rider/vehicle/complete"
+            element={
+              <ProtectedRoute allowedRoles={["rider"]}>
+                {wrapWithLayout(<VehicleCompletion />)}
+              </ProtectedRoute>
+            }
+          />
 
-            {/* Rider Prefixed Shared Features */}
-            <Route
-              path="/rider/messages"
-              element={
-                <ProtectedRoute allowedRoles={["rider"]}>
-                  {wrapWithLayout(<Messages />)}
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/rider/sos"
-              element={
-                <ProtectedRoute allowedRoles={["rider"]}>
-                  {wrapWithLayout(<EmergencySOS />)}
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/rider/complaints"
-              element={
-                <ProtectedRoute allowedRoles={["rider"]}>
-                  {wrapWithLayout(<Complaint />)}
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/rider/settings"
-              element={
-                <ProtectedRoute allowedRoles={["rider"]}>
-                  {wrapWithLayout(<Settings />)}
-                </ProtectedRoute>
-              }
-            />
+          {/* Rider Prefixed Shared Features */}
+          <Route
+            path="/rider/messages"
+            element={
+              <ProtectedRoute allowedRoles={["rider"]}>
+                {wrapWithLayout(<Messages />)}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/rider/sos"
+            element={
+              <ProtectedRoute allowedRoles={["rider"]}>
+                {wrapWithLayout(<EmergencySOS />)}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/rider/complaints"
+            element={
+              <ProtectedRoute allowedRoles={["rider"]}>
+                {wrapWithLayout(<Complaint />)}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/rider/settings"
+            element={
+              <ProtectedRoute allowedRoles={["rider"]}>
+                {wrapWithLayout(<Settings />)}
+              </ProtectedRoute>
+            }
+          />
 
-            {/* Super Admin Dashboard Routes */}
-            <Route
-              path="/admin/dashboard"
-              element={
-                <ProtectedRoute allowedRoles={["admin"]}>
-                  {wrapWithLayout(<AdminDashboard />)}
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/users"
-              element={
-                <ProtectedRoute allowedRoles={["admin"]}>
-                  {wrapWithLayout(<UserDirectory />)}
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/approvals"
-              element={
-                <ProtectedRoute allowedRoles={["admin"]}>
-                  {wrapWithLayout(<UserApprovals />)}
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/verify"
-              element={
-                <ProtectedRoute allowedRoles={["admin"]}>
-                  {wrapWithLayout(<VerificationPortal />)}
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/analytics"
-              element={
-                <ProtectedRoute allowedRoles={["admin"]}>
-                  {wrapWithLayout(<SystemAnalytics />)}
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/complaints"
-              element={
-                <ProtectedRoute allowedRoles={["admin"]}>
-                  {wrapWithLayout(<AdminComplaints />)}
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/messages"
-              element={
-                <ProtectedRoute allowedRoles={["admin"]}>
-                  {wrapWithLayout(<Messages />)}
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/settings"
-              element={
-                <ProtectedRoute allowedRoles={["admin"]}>
-                  {wrapWithLayout(<AdminSettings />)}
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/admins"
-              element={
-                <ProtectedRoute allowedRoles={["admin"]}>
-                  {wrapWithLayout(<AdminManagement />)}
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/registrations"
-              element={
-                <ProtectedRoute allowedRoles={["admin"]}>
-                  {wrapWithLayout(<RegistrationDirectory />)}
-                </ProtectedRoute>
-              }
-            />
-          </Routes>
+          {/* Super Admin Dashboard Routes */}
+          <Route
+            path="/admin/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                {wrapWithLayout(<AdminDashboard />)}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/users"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                {wrapWithLayout(<UserDirectory />)}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/approvals"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                {wrapWithLayout(<UserApprovals />)}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/verify"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                {wrapWithLayout(<VerificationPortal />)}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/analytics"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                {wrapWithLayout(<SystemAnalytics />)}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/complaints"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                {wrapWithLayout(<AdminComplaints />)}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/messages"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                {wrapWithLayout(<Messages />)}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/settings"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                {wrapWithLayout(<AdminSettings />)}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/admins"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                {wrapWithLayout(<AdminManagement />)}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/registrations"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                {wrapWithLayout(<RegistrationDirectory />)}
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
       </Router>
     </>
   );
