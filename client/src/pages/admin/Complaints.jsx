@@ -74,9 +74,32 @@ const AdminComplaints = () => {
         const matchesFilter = filter === 'all' || c.status === filter;
         const matchesSearch = c.subject.toLowerCase().includes(searchTerm.toLowerCase()) || 
                              c.user?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                             c.againstUser?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                             c.againstText?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                              c.description.toLowerCase().includes(searchTerm.toLowerCase());
         return matchesFilter && matchesSearch;
     });
+
+    const formatAgainst = (complaint) => {
+        if (complaint.againstUser) {
+            const role = complaint.againstUser.role ? ` (${complaint.againstUser.role})` : '';
+            const email = complaint.againstUser.email ? ` • ${complaint.againstUser.email}` : '';
+            return `${complaint.againstUser.name || 'User'}${role}${email}`;
+        }
+        if (complaint.againstText) {
+            const role = complaint.againstRole ? ` (${complaint.againstRole})` : '';
+            return `${complaint.againstText}${role}`;
+        }
+        return '—';
+    };
+
+    const formatRide = (ride) => {
+        if (!ride) return '—';
+        const dateLabel = ride?.date ? new Date(ride.date).toISOString().split('T')[0] : '';
+        const timeLabel = ride?.time ? ` ${ride.time}` : '';
+        const statusLabel = ride?.status ? ` • ${ride.status}` : '';
+        return `${ride.pickupLocation} → ${ride.dropoffLocation}${dateLabel ? ` • ${dateLabel}${timeLabel}` : ''}${statusLabel}`;
+    };
 
     return (
         <div className="space-y-8 pb-10">
@@ -124,14 +147,14 @@ const AdminComplaints = () => {
                                 exit={{ opacity: 0, scale: 0.95 }}
                                 className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm relative overflow-hidden group"
                             >
-                                <div className="flex flex-col md:flex-row gap-8">
-                                    <div className="flex-shrink-0">
-                                        <div className={`w-16 h-16 rounded-3xl flex items-center justify-center text-xl font-black
-                                            ${complaint.status === 'resolved' ? 'bg-emerald-50 text-emerald-500' : 'bg-rose-50 text-rose-500'}`}>
-                                            <FaFlag />
-                                        </div>
-                                    </div>
-                                    <div className="flex-1">
+                                        <div className="flex flex-col md:flex-row gap-8">
+                                            <div className="flex-shrink-0">
+                                                <div className={`w-16 h-16 rounded-3xl flex items-center justify-center text-xl font-black
+                                            ${complaint.status === 'Resolved' ? 'bg-emerald-50 text-emerald-500' : 'bg-rose-50 text-rose-500'}`}>
+                                                    <FaFlag />
+                                                </div>
+                                            </div>
+                                            <div className="flex-1">
                                         <div className="flex flex-wrap items-center gap-3 mb-2">
                                             <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 bg-slate-50 px-2 py-1 rounded-lg">
                                                 {complaint.type}
@@ -148,6 +171,12 @@ const AdminComplaints = () => {
                                         <p className="text-slate-600 font-medium text-sm leading-relaxed mb-6">
                                             {complaint.description}
                                         </p>
+                                        {complaint.ride && (
+                                            <div className="mb-6 bg-slate-50 border border-slate-100 rounded-2xl p-4">
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Related Ride</p>
+                                                <p className="text-sm text-slate-700 font-semibold">{formatRide(complaint.ride)}</p>
+                                            </div>
+                                        )}
                                         {complaint.adminResponse && (
                                             <div className="mb-6 bg-indigo-50/60 border border-indigo-100 rounded-2xl p-4">
                                                 <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500 mb-2">Admin Response</p>
@@ -155,13 +184,31 @@ const AdminComplaints = () => {
                                             </div>
                                         )}
                                         <div className="flex items-center justify-between border-t border-slate-50 pt-6">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-xs font-black text-slate-500">
-                                                    <FaUser />
+                                            <div className="flex flex-col md:flex-row md:items-center gap-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-xs font-black text-slate-500">
+                                                        <FaUser />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Reported by</p>
+                                                        <p className="text-xs font-bold text-slate-800 leading-none">
+                                                            {complaint.user?.name || 'Deleted User'}
+                                                            {complaint.user?.role ? <span className="text-slate-400 font-black text-[10px] uppercase tracking-widest ml-2">({complaint.user.role})</span> : null}
+                                                        </p>
+                                                        {complaint.user?.email && (
+                                                            <p className="text-[10px] text-slate-400 font-bold">{complaint.user.email}</p>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Reported by</p>
-                                                    <p className="text-xs font-bold text-slate-800 leading-none">{complaint.user?.name || 'Deleted User'}</p>
+
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-xs font-black text-slate-500">
+                                                        <FaUser />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Against</p>
+                                                        <p className="text-xs font-bold text-slate-800 leading-none">{formatAgainst(complaint)}</p>
+                                                    </div>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-3">

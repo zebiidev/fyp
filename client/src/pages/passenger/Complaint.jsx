@@ -61,6 +61,7 @@ const Complaint = () => {
     const [showForm, setShowForm] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [complaints, setComplaints] = useState([]);
+    const [myRides, setMyRides] = useState([]);
     const issueTypes = isRider
         ? ['Passenger Behavior', 'Route Issue', 'Vehicle Issue', 'Safety', 'App Bug', 'Other']
         : ['Ride Issue', 'Driver Behavior', 'App Bug', 'Payment', 'Other'];
@@ -68,7 +69,11 @@ const Complaint = () => {
     const [formData, setFormData] = useState({
         type: issueTypes[0],
         subject: issueTypes[0],
-        description: ''
+        description: '',
+        rideId: '',
+        againstUserId: '',
+        againstRole: isRider ? 'passenger' : 'rider',
+        againstText: ''
     });
 
     const loadComplaints = async () => {
@@ -95,15 +100,65 @@ const Complaint = () => {
         loadComplaints();
     }, []);
 
+    useEffect(() => {
+        const loadMyRides = async () => {
+            try {
+                const res = await api.get('/rides/my');
+                setMyRides(Array.isArray(res.data) ? res.data : []);
+            } catch {
+                setMyRides([]);
+            }
+        };
+        loadMyRides();
+    }, []);
+
+    const onSelectRide = (rideId) => {
+        const ride = myRides.find((r) => String(r._id) === String(rideId));
+        if (!rideId || !ride) {
+            setFormData((prev) => ({
+                ...prev,
+                rideId: rideId || '',
+                againstUserId: ''
+            }));
+            return;
+        }
+
+        if (!isRider) {
+            const driverId = ride.driver?._id || '';
+            setFormData((prev) => ({
+                ...prev,
+                rideId,
+                againstUserId: driverId,
+                againstRole: 'rider',
+                againstText: driverId ? '' : prev.againstText
+            }));
+            return;
+        }
+
+        setFormData((prev) => ({
+            ...prev,
+            rideId,
+            againstUserId: ''
+        }));
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
 
         try {
-            const res = await api.post('/complaints', formData);
+            const payload = { ...formData };
+            if (payload.againstUserId) {
+                delete payload.againstText;
+                delete payload.againstRole;
+            } else if (!payload.againstText || !payload.againstText.trim()) {
+                delete payload.againstText;
+                delete payload.againstRole;
+            }
+            const res = await api.post('/complaints', payload);
             const newComplaint = {
                 id: res.data._id,
-                ...formData,
+                ...payload,
                 status: res.data.status || 'Pending',
                 adminResponse: res.data.adminResponse,
                 ticketId: res.data.ticketId,
@@ -212,19 +267,69 @@ const Complaint = () => {
                             initial={{ scale: 0.9, y: 30 }}
                             animate={{ scale: 1, y: 0 }}
                             exit={{ scale: 0.9, y: 30 }}
-                            className="relative bg-white w-full max-w-lg rounded-[40px] shadow-2xl overflow-hidden p-8 md:p-10"
+                            className="relative bg-white w-full max-w-lg rounded-[40px] shadow-2xl overflow-hidden"
                         >
-                            <div className="flex justify-between items-center mb-8">
-                                <h2 className="text-2xl font-black text-slate-800">New Complaint</h2>
-                                <button
-                                    onClick={() => setShowForm(false)}
-                                    className="p-2 bg-slate-50 text-slate-400 rounded-full hover:bg-rose-50 hover:text-rose-500 transition-colors"
-                                >
-                                    <FaTimesCircle size={20} />
-                                </button>
-                            </div>
+                            <div className="max-h-[85vh] overflow-y-auto p-8 md:p-10">
+                                <div className="flex justify-between items-center mb-8">
+                                    <h2 className="text-2xl font-black text-slate-800">New Complaint</h2>
+                                    <button
+                                        onClick={() => setShowForm(false)}
+                                        className="p-2 bg-slate-50 text-slate-400 rounded-full hover:bg-rose-50 hover:text-rose-500 transition-colors"
+                                    >
+                                        <FaTimesCircle size={20} />
+                                    </button>
+                                </div>
 
-                            <form onSubmit={handleSubmit} className="space-y-6">
+                                <form onSubmit={handleSubmit} className="space-y-6">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">Related Ride (recommended)</label>
+                                    <select
+                                        value={formData.rideId}
+                                        onChange={(e) => onSelectRide(e.target.value)}
+                                        className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-primary"
+                                    >
+                                        <option value="">Select a ride…</option>
+                                        {myRides.map((ride) => {
+                                            const dateLabel = ride?.date ? new Date(ride.date).toISOString().split('T')[0] : 'Unknown date';
+                                            const title = `${ride.pickupLocation} → ${ride.dropoffLocation} (${dateLabel} ${ride.time || ''})`;
+                                            return (
+                                                <option key={ride._id} value={ride._id}>
+                                                    {title}
+                                                </option>
+                                            );
+                                        })}
+                                    </select>
+                                    {formData.rideId && !isRider && formData.againstUserId && (
+                                        <p className="text-[11px] text-slate-400 font-medium">
+                                            This will be filed against the ride’s driver.
+                                        </p>
+                                    )}
+                                </div>
+
+                                {isRider && formData.rideId && (
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">Select Passenger (for this ride)</label>
+                                        <select
+                                            value={formData.againstUserId}
+                                            onChange={(e) => setFormData((prev) => ({ ...prev, againstUserId: e.target.value }))}
+                                            className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-primary"
+                                        >
+                                            <option value="">Select passenger…</option>
+                                            {(myRides.find((r) => String(r._id) === String(formData.rideId))?.passengers || [])
+                                                .map((p) => p?.user)
+                                                .filter(Boolean)
+                                                .map((u) => (
+                                                    <option key={u._id} value={u._id}>
+                                                        {u.name || u.email || u._id}
+                                                    </option>
+                                                ))}
+                                        </select>
+                                        <p className="text-[11px] text-slate-400 font-medium">
+                                            Pick the passenger you are reporting. (If not listed, use “Against (optional)” below.)
+                                        </p>
+                                    </div>
+                                )}
+
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">Issue Type</label>
                                     <div className="grid grid-cols-2 gap-3">
@@ -261,6 +366,34 @@ const Complaint = () => {
                                 </div>
 
                                 <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">Against (optional)</label>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                        <select
+                                            value={formData.againstRole}
+                                            onChange={(e) => setFormData({ ...formData, againstRole: e.target.value })}
+                                            className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-primary"
+                                            disabled={Boolean(formData.againstUserId)}
+                                        >
+                                            <option value="rider">Rider / Driver</option>
+                                            <option value="passenger">Passenger</option>
+                                            <option value="admin">Admin / Support</option>
+                                            <option value="other">Other</option>
+                                        </select>
+                                        <input
+                                            type="text"
+                                            value={formData.againstText}
+                                            onChange={(e) => setFormData({ ...formData, againstText: e.target.value })}
+                                            className="md:col-span-2 w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-primary placeholder:font-medium placeholder:text-slate-300"
+                                            placeholder="Name / email / phone / ride id (anything you know)"
+                                            disabled={Boolean(formData.againstUserId)}
+                                        />
+                                    </div>
+                                    <p className="text-[11px] text-slate-400 font-medium">
+                                        If you can’t identify the user, write any detail that helps (ride id, route, time, etc.).
+                                    </p>
+                                </div>
+
+                                <div className="space-y-2">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">Description</label>
                                     <textarea
                                         required
@@ -287,7 +420,8 @@ const Complaint = () => {
                                         </>
                                     )}
                                 </button>
-                            </form>
+                                </form>
+                            </div>
                         </motion.div>
                     </div>
                 )}

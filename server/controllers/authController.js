@@ -210,6 +210,11 @@ export const updateProfile = async (req, res) => {
         ];
         const updates = {};
 
+        const existingUser = await User.findById(req.user.id).select('role vehicleDetails verificationDocuments');
+        if (!existingUser) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
         for (const field of allowedFields) {
             if (req.body[field] !== undefined) {
                 updates[field] = req.body[field];
@@ -225,6 +230,41 @@ export const updateProfile = async (req, res) => {
         }
         if (req.user.role === 'rider' && req.body.verificationDocuments) {
             updates.verificationDocuments = req.body.verificationDocuments;
+        }
+
+        if (
+            existingUser.role === 'rider' &&
+            (req.body.vehicleDetails !== undefined || req.body.verificationDocuments !== undefined)
+        ) {
+            const nextVehicleDetails = {
+                ...(existingUser.vehicleDetails || {}),
+                ...(req.body.vehicleDetails || {})
+            };
+            const nextVerificationDocuments =
+                req.body.verificationDocuments !== undefined
+                    ? req.body.verificationDocuments
+                    : existingUser.verificationDocuments;
+
+            const missing = [];
+            const hasText = (v) => typeof v === 'string' && v.trim().length > 0;
+
+            if (!hasText(nextVehicleDetails.type)) missing.push('vehicle type');
+            if (!hasText(nextVehicleDetails.make)) missing.push('vehicle make');
+            if (!hasText(nextVehicleDetails.model)) missing.push('vehicle model');
+            if (!hasText(nextVehicleDetails.plateNumber)) missing.push('plate number');
+
+            const images = Array.isArray(nextVehicleDetails.images) ? nextVehicleDetails.images.filter(hasText) : [];
+            if (images.length < 2) missing.push('vehicle images (vehicle + number plate)');
+
+            const docs = Array.isArray(nextVerificationDocuments) ? nextVerificationDocuments : [];
+            const hasDocUrl = docs.some((d) => hasText(d?.url));
+            if (!hasDocUrl) missing.push('driving license image');
+
+            if (missing.length) {
+                return res.status(400).json({
+                    message: `Incomplete vehicle verification details. Missing: ${missing.join(', ')}.`
+                });
+            }
         }
 
         const user = await User.findByIdAndUpdate(

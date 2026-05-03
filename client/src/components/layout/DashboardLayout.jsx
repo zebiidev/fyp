@@ -191,6 +191,7 @@ const DashboardLayout = ({ children }) => {
     { icon: FaIdBadge, label: "User Approvals", path: "/admin/approvals" },
     { icon: FaShieldAlt, label: "Verification Hub", path: "/admin/verify" },
     { icon: FaChartLine, label: "Statistics", path: "/admin/analytics" },
+    { icon: FaExclamationCircle, label: "Complaints", path: "/admin/complaints" },
     { icon: FaComments, label: "System Chat", path: "/admin/messages" },
     { icon: FaUserShield, label: "Admin Management", path: "/admin/admins" },
     {

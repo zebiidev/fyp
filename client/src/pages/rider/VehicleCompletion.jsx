@@ -57,15 +57,32 @@ const VehicleCompletion = () => {
         }
     });
 
+    const existingVehicleImages = Array.isArray(user?.vehicleDetails?.images) ? user.vehicleDetails.images : [];
+    const existingLicense = user?.verificationDocuments?.[0]?.url || '';
+
     const [images, setImages] = useState({
-        vehicle: { file: null, preview: '' },
-        license: { file: null, preview: '' },
-        plate: { file: null, preview: '' }
+        vehicle: { file: null, preview: existingVehicleImages[0] || '' },
+        plate: { file: null, preview: existingVehicleImages[1] || '' },
+        license: { file: null, preview: existingLicense }
     });
 
     const onSubmit = async (data) => {
         setSubmitting(true);
         try {
+            const missing = [];
+            if (!String(data.vehicleType || '').trim()) missing.push('vehicle type');
+            if (!String(data.vehicleMake || '').trim()) missing.push('vehicle make');
+            if (!String(data.vehicleModel || '').trim()) missing.push('vehicle model');
+            if (!String(data.regNumber || '').trim()) missing.push('plate number');
+            if (!images.vehicle.file && !images.vehicle.preview) missing.push('vehicle photo');
+            if (!images.plate.file && !images.plate.preview) missing.push('number plate photo');
+            if (!images.license.file && !images.license.preview) missing.push('driving license photo');
+
+            if (missing.length) {
+                toast.error(`Please add: ${missing.join(', ')}`);
+                return;
+            }
+
             const uploadIfPresent = async (file) => {
                 if (!file) return null;
                 return uploadImageToImageKit(file);
@@ -77,8 +94,12 @@ const VehicleCompletion = () => {
                 uploadIfPresent(images.license.file)
             ]);
 
-            const vehicleImages = [vehicleUrl, plateUrl].filter(Boolean);
-            const verificationDocuments = licenseUrl ? [{ url: licenseUrl, status: 'pending' }] : undefined;
+            const finalVehicleUrl = vehicleUrl || images.vehicle.preview;
+            const finalPlateUrl = plateUrl || images.plate.preview;
+            const finalLicenseUrl = licenseUrl || images.license.preview;
+
+            const vehicleImages = [finalVehicleUrl, finalPlateUrl].filter(Boolean);
+            const verificationDocuments = finalLicenseUrl ? [{ url: finalLicenseUrl, status: 'pending' }] : undefined;
 
             await dispatch(updateProfile({
                 vehicleDetails: {

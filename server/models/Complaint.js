@@ -6,10 +6,36 @@ const complaintSchema = new mongoose.Schema({
         ref: 'User',
         required: true
     },
+    ride: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Ride'
+    },
+    againstUser: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    },
+    againstRole: {
+        type: String,
+        enum: ['passenger', 'rider', 'admin', 'other']
+    },
+    againstText: {
+        type: String,
+        trim: true
+    },
     type: {
         type: String,
         required: true,
-        enum: ['Ride Issue', 'Driver Behavior', 'App Bug', 'Payment', 'Other']
+        enum: [
+            'Ride Issue',
+            'Driver Behavior',
+            'App Bug',
+            'Payment',
+            'Other',
+            'Passenger Behavior',
+            'Route Issue',
+            'Vehicle Issue',
+            'Safety'
+        ]
     },
     subject: {
         type: String,
