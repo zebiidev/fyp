@@ -135,7 +135,7 @@ export const login = async (req, res) => {
     try {
         const normalizedEmail = String(email || '').trim().toLowerCase();
         // Check for user
-        const user = await User.findOne({ email: normalizedEmail }).select('password role accountStatus isBlocked name email');
+        const user = await User.findOne({ email: normalizedEmail }).select('-__v');
 
         if (!user) {
             return res.status(400).json({ message: 'Invalid credentials' });
@@ -162,14 +162,13 @@ export const login = async (req, res) => {
 
         const token = generateToken(user._id);
 
+        const userResponse = user.toObject();
+        delete userResponse.password;
+        userResponse.id = userResponse._id;
+
         res.json({
             token,
-            user: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                role: user.role
-            }
+            user: userResponse
         });
     } catch (err) {
         console.error(err.message);

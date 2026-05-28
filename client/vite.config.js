@@ -39,4 +39,17 @@ export default defineConfig({
       }
     })
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-redux': ['@reduxjs/toolkit', 'react-redux'],
+          'vendor-ui': ['framer-motion', 'react-icons'],
+          'vendor-charts': ['recharts'],
+          'vendor-maps': ['@react-google-maps/api'],
+        }
+      }
+    }
+  }
 })

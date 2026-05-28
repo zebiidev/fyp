@@ -81,10 +81,13 @@ const DashboardLayout = ({ children }) => {
   useEffect(() => {
     if (!token) return;
 
-    dispatch(fetchNotifications());
+    // Defer initial fetch to not compete with dashboard data loading
+    const initialFetchId = setTimeout(() => dispatch(fetchNotifications()), 2000);
 
     const socket = getSocket(token);
-    if (!socket) return;
+    if (!socket) {
+      return () => clearTimeout(initialFetchId);
+    }
 
     const handleConnect = () => {
       socket.emit("join_chat"); // Join personal room for notifications
@@ -102,6 +105,7 @@ const DashboardLayout = ({ children }) => {
     }
 
     return () => {
+      clearTimeout(initialFetchId);
       socket.off("connect", handleConnect);
       socket.off("receive_notification", handleReceiveNotification);
     };
@@ -113,7 +117,7 @@ const DashboardLayout = ({ children }) => {
     // Fallback polling so notifications still update if websocket is unavailable.
     const intervalId = setInterval(() => {
       dispatch(fetchNotifications());
-    }, 15000);
+    }, 60000);
 
     const onVisible = () => {
       if (document.visibilityState === "visible") {
