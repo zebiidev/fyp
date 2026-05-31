@@ -1,7 +1,14 @@
+import dotenv from 'dotenv';
+
+dotenv.config();
+
 import User from '../models/User.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import SibApiV3Sdk from 'sib-api-v3-sdk';
+// Initialize Brevo (Sendinblue) API client
+SibApiV3Sdk.ApiClient.instance.authentications['api-key'].apiKey = process.env.BREVO_API_KEY;
+const brevoApiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
 const ADDRESS_STOP_WORDS = new Set([
     'house', 'home', 'street', 'st', 'road', 'rd', 'lane', 'ln', 'sector',
     'phase', 'plot', 'flat', 'apt', 'apartment', 'near', 'opposite', 'opp',
@@ -349,35 +356,32 @@ export const forgotPassword = async (req, res) => {
     try {
         const user = await User.findOne({ email: normalizedEmail });
         if (!user) {
-            // Respond with generic message to avoid enumeration
             return res.status(200).json({ message: 'If the email is registered, a reset link has been sent.' });
         }
-        // Generate token
         const crypto = await import('crypto');
         const resetToken = crypto.randomBytes(32).toString('hex');
         const resetTokenHash = await bcrypt.hash(resetToken, 10);
         user.resetPasswordToken = resetTokenHash;
-        user.resetPasswordExpires = Date.now() + 60 * 60 * 1000; // 1 hour
+        user.resetPasswordExpires = Date.now() + 60 * 60 * 1000;
         await user.save();
-        // Send reset email via Brevo (Sendinblue) if API key and sender are configured
+
         const resetUrl = `${process.env.CLIENT_URL}/reset-password?token=${resetToken}&id=${user._id}`;
+        console.log('Brevo config - API_KEY:', !!process.env.BREVO_API_KEY, 'SENDER_EMAIL:', !!process.env.BREVO_SENDER_EMAIL);
         if (process.env.BREVO_API_KEY && process.env.BREVO_SENDER_EMAIL) {
-          try {
-            const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
-            apiInstance.setApiKey(SibApiV3Sdk.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY);
-            const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
-            sendSmtpEmail.subject = 'Password Reset Request';
-            sendSmtpEmail.htmlContent = `<p>Hello,</p><p>You requested a password reset. Click the link below to set a new password (valid for 1 hour):</p><a href="${resetUrl}">Reset Password</a>`;
-            sendSmtpEmail.sender = { email: process.env.BREVO_SENDER_EMAIL };
-            sendSmtpEmail.to = [{ email: normalizedEmail }];
-            await apiInstance.sendTransacEmail(sendSmtpEmail);
-          } catch (emailErr) {
-            console.error('Brevo email send error:', emailErr);
-          }
+            try {
+                const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+                sendSmtpEmail.subject = 'Password Reset Request';
+                sendSmtpEmail.htmlContent = `<p>Hello,</p><p>You requested a password reset. Click the link below to set a new password (valid for 1 hour):</p><a href="${resetUrl}">Reset Password</a>`;
+                sendSmtpEmail.sender = { email: process.env.BREVO_SENDER_EMAIL };
+                sendSmtpEmail.to = [{ email: normalizedEmail }];
+                const response = await brevoApiInstance.sendTransacEmail(sendSmtpEmail);
+                console.log('Brevo email send response:', response);
+            } catch (emailErr) {
+                console.error('Brevo email send error:', emailErr);
+            }
         } else {
-          console.warn('Brevo API key or sender email not set – skipping email send');
+            console.warn('Brevo API key or sender email not set – skipping email send');
         }
-        // For debugging, also log the URL
         console.log('Password reset URL:', resetUrl);
         return res.status(200).json({ message: 'If the email is registered, a reset link has been sent.' });
     } catch (err) {
