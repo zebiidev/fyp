@@ -106,9 +106,9 @@ const Login = () => {
 
                         <div className="flex items-center justify-between">
                             <div className="text-sm">
-                                <a href="#" className="font-semibold text-primary hover:text-primary-dark transition-colors">
+                                <Link to="/forgot-password" className="font-semibold text-primary hover:text-primary-dark transition-colors">
                                     Forgot your password?
-                                </a>
+                                </Link>
                             </div>
                         </div>
 

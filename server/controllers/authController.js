@@ -1,7 +1,7 @@
 import User from '../models/User.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-
+import SibApiV3Sdk from 'sib-api-v3-sdk';
 const ADDRESS_STOP_WORDS = new Set([
     'house', 'home', 'street', 'st', 'road', 'rd', 'lane', 'ln', 'sector',
     'phase', 'plot', 'flat', 'apt', 'apartment', 'near', 'opposite', 'opp',
@@ -338,3 +338,87 @@ export const getRidersFromArea = async (req, res) => {
         res.status(500).send('Server Error');
     }
 };
+/*
+ * @desc    Request password reset (send email with token)
+ * @route   POST /api/auth/forgot-password
+ * @access  Public
+ */
+export const forgotPassword = async (req, res) => {
+    const { email } = req.body;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    try {
+        const user = await User.findOne({ email: normalizedEmail });
+        if (!user) {
+            // Respond with generic message to avoid enumeration
+            return res.status(200).json({ message: 'If the email is registered, a reset link has been sent.' });
+        }
+        // Generate token
+        const crypto = await import('crypto');
+        const resetToken = crypto.randomBytes(32).toString('hex');
+        const resetTokenHash = await bcrypt.hash(resetToken, 10);
+        user.resetPasswordToken = resetTokenHash;
+        user.resetPasswordExpires = Date.now() + 60 * 60 * 1000; // 1 hour
+        await user.save();
+        // Send reset email via Brevo (Sendinblue) if API key and sender are configured
+        const resetUrl = `${process.env.CLIENT_URL}/reset-password?token=${resetToken}&id=${user._id}`;
+        if (process.env.BREVO_API_KEY && process.env.BREVO_SENDER_EMAIL) {
+          try {
+            const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
+            apiInstance.setApiKey(SibApiV3Sdk.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY);
+            const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+            sendSmtpEmail.subject = 'Password Reset Request';
+            sendSmtpEmail.htmlContent = `<p>Hello,</p><p>You requested a password reset. Click the link below to set a new password (valid for 1 hour):</p><a href="${resetUrl}">Reset Password</a>`;
+            sendSmtpEmail.sender = { email: process.env.BREVO_SENDER_EMAIL };
+            sendSmtpEmail.to = [{ email: normalizedEmail }];
+            await apiInstance.sendTransacEmail(sendSmtpEmail);
+          } catch (emailErr) {
+            console.error('Brevo email send error:', emailErr);
+          }
+        } else {
+          console.warn('Brevo API key or sender email not set – skipping email send');
+        }
+        // For debugging, also log the URL
+        console.log('Password reset URL:', resetUrl);
+        return res.status(200).json({ message: 'If the email is registered, a reset link has been sent.' });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+};
+
+/*
+ * @desc    Reset password using token
+ * @route   POST /api/auth/reset-password
+ * @access  Public
+ */
+export const resetPassword = async (req, res) => {
+    const { token, userId, newPassword } = req.body;
+    if (!token || !userId || !newPassword) {
+        return res.status(400).json({ message: 'Invalid request.' });
+    }
+    try {
+        const user = await User.findById(userId);
+        if (!user || !user.resetPasswordToken || !user.resetPasswordExpires) {
+            return res.status(400).json({ message: 'Invalid or expired token.' });
+        }
+        if (user.resetPasswordExpires < Date.now()) {
+            return res.status(400).json({ message: 'Token has expired.' });
+        }
+        const isMatch = await bcrypt.compare(token, user.resetPasswordToken);
+        if (!isMatch) {
+            return res.status(400).json({ message: 'Invalid token.' });
+        }
+        // Update password
+        const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS || 10);
+        user.password = await bcrypt.hash(newPassword, saltRounds);
+        // Clear reset fields
+        user.resetPasswordToken = null;
+        user.resetPasswordExpires = null;
+        await user.save();
+        return res.status(200).json({ message: 'Password has been reset successfully.' });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+};
+
