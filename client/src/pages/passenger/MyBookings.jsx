@@ -167,7 +167,7 @@ const MyBookings = () => {
                     {activeBookings.length > 0 ? (
                         activeBookings.map((b) => <BookingCard key={b.id} booking={b} />)
                     ) : (
-                        <div className="text-center py-10 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                        <div className="text-center py-10 bg-blue-50 rounded-2xl border-2 border-dashed border-slate-200">
                             <p className="text-slate-400 text-sm font-medium">No active bookings found</p>
                         </div>
                     )}
